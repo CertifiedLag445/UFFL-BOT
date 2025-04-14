@@ -458,7 +458,7 @@ async def demote(interaction: discord.Interaction, target: discord.Member, role:
 
 @bot.tree.command(name="roster", description="View a full list of Franchise Owners and their team rosters.")
 async def roster(interaction: discord.Interaction):
-    allowed_roles = {"WORKERS", "Founder"}
+    allowed_roles = {"WORKERS", "Founder", "Franchise Owner"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("You are not authorized to use this command.", ephemeral=True)
         return
