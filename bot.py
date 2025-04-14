@@ -155,17 +155,18 @@ class FootballFusionBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
 
-async def setup_hook(self):
-    guild = discord.Object(id=GUILD_ID)
-    print("🧹 Force-wiping ALL commands...")
+    async def setup_hook(self):
+        guild = discord.Object(id=GUILD_ID)
+        print("🧹 Force-wiping ALL commands...")
 
-    # 🔥 One-time nuclear option: clear global and guild commands
-    await self.tree.clear_commands()
-    await self.tree.clear_commands(guild=guild)
-    await self.tree.sync()
-    await self.tree.sync(guild=guild)
+        # 🔥 One-time nuclear option: clear global and guild commands
+        await self.tree.clear_commands()
+        await self.tree.clear_commands(guild=guild)
+        await self.tree.sync()
+        await self.tree.sync(guild=guild)
 
-    print("✅ All commands cleared and re-synced.")
+        print("✅ All commands cleared and re-synced.")
+
 
 
     
