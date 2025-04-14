@@ -18,6 +18,47 @@ def get_user_team(user: discord.Member):
             return role.name
     return None
 
+# 👇 Add this here
+async def alert_fo_of_gm_action(guild: discord.Guild, acting_member: discord.Member, action: str, target: discord.Member):
+    gm_role = discord.utils.get(guild.roles, name="General Manager")
+    fo_role = discord.utils.get(guild.roles, name="Franchise Owner")
+    
+    if not gm_role or not fo_role:
+        return
+
+    if gm_role not in acting_member.roles:
+        return
+
+    team_name = None
+    for role in acting_member.roles:
+        if role.name in TEAM_NAMES:
+            team_name = role.name
+            break
+
+    if not team_name:
+        return
+
+    franchise_owner = None
+    for member in fo_role.members:
+        if any(role.name == team_name for role in member.roles):
+            franchise_owner = member
+            break
+
+    if not franchise_owner or franchise_owner == acting_member:
+        return
+
+    try:
+        embed = discord.Embed(
+            title="UFFL - GM Action Alert",
+            description=f"Your GM **{acting_member.display_name}** has **{action}** **{target.display_name}**.",
+            color=discord.Color.gold()
+        )
+        embed.set_footer(text=f"Team: {team_name}")
+        await franchise_owner.send(embed=embed)
+    except discord.Forbidden:
+        print(f"❌ Could not DM Franchise Owner {franchise_owner.display_name}")
+
+
 class OfferView(View):
     def __init__(self, coach: discord.Member, team_name: str, guild: discord.Guild, *, timeout=180):
         super().__init__(timeout=timeout)
@@ -125,13 +166,8 @@ GUILD_ID = 1307397558787899515
 
 @bot.event
 async def on_ready():
-    guild = discord.Object(id=GUILD_ID)
-    
-    # This clears all commands and re-registers them fresh
-    await bot.tree.clear_commands(guild=guild)
-    synced = await bot.tree.sync(guild=guild)
+    print(f"✅ Bot is ready. Logged in as {bot.user}")
 
-    print(f"Force-cleared and re-synced {len(synced)} commands to guild {GUILD_ID}")
 
 
 @bot.event
@@ -143,6 +179,12 @@ async def on_application_command_error(interaction, error):
 @app_commands.describe(target="The user to offer a spot on your team.")
 async def offer(interaction: discord.Interaction, target: discord.Member):
     await interaction.response.defer(ephemeral=True)
+
+    allowed_roles = {"Franchise Owner", "General Manager"}  # 👈 edit this as needed
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.followup.send("You do not have permission to use this command.", ephemeral=True)
+        return
+
 
     if "Franchise Owner" not in [r.name for r in interaction.user.roles]:
         await interaction.followup.send("Only Franchise Owners can offer players.", ephemeral=True)
@@ -177,9 +219,10 @@ async def offer(interaction: discord.Interaction, target: discord.Member):
 @bot.tree.command(name="release", description="Release a player from your team.")
 @app_commands.describe(target="The member you want to release from your team.")
 async def release(interaction: discord.Interaction, target: discord.Member):
-    if "Franchise Owner" not in [role.name for role in interaction.user.roles]:
+    allowed_roles = {"Franchise Owner", "General Manager"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message(
-            "Only Franchise Owners can release players.",
+            "Only Franchise Owners or General Managers can release players.",
             ephemeral=True
         )
         return
@@ -246,6 +289,11 @@ async def release(interaction: discord.Interaction, target: discord.Member):
 @bot.tree.command(name="demand", description="Request to leave your current team.")
 async def demand(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
+
+    # ⛔ Prevent FOs from demanding
+    if "Franchise Owner" in [r.name for r in interaction.user.roles]:
+        await interaction.followup.send("Franchise Owners must transfer ownership before demanding a release.", ephemeral=True)
+        return
 
     team_name = get_user_team(interaction.user)
     if not team_name:
