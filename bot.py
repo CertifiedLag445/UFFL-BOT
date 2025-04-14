@@ -155,12 +155,8 @@ class FootballFusionBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
 
-class FootballFusionBot(commands.Bot):
-    def __init__(self):
-        intents = discord.Intents.default()
-        intents.members = True
-        intents.message_content = True
-        super().__init__(command_prefix="!", intents=intents)
+        # ✅ Register the application command tree
+        self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
         guild = discord.Object(id=GUILD_ID)
