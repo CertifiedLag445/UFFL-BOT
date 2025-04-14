@@ -410,7 +410,8 @@ async def demote(interaction: discord.Interaction, target: discord.Member, role:
     except discord.Forbidden:
         await interaction.response.send_message("I do not have permission to modify roles.", ephemeral=True)
 
-@bot.tree.command(name="roster", description="View a full list of Franchise Owners and their team rosters.")
+@bot.tree.command(name="roster2", description="TEMP - View Franchise Owners and their teams.")
+
 async def roster(interaction: discord.Interaction):
     allowed_roles = {"WORKERS", "Founder"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
