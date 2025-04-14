@@ -401,6 +401,83 @@ async def demote(interaction: discord.Interaction, target: discord.Member, role:
     except discord.Forbidden:
         await interaction.response.send_message("I do not have permission to modify roles.", ephemeral=True)
 
+@bot.tree.command(name="roster", description="View a full list of Franchise Owners and their team rosters.")
+async def roster(interaction: discord.Interaction):
+    allowed_roles = {"WORKERS", "Founder"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.response.send_message("You are not authorized to use this command.", ephemeral=True)
+        return
+
+    await interaction.response.defer(ephemeral=True)
+
+    guild = interaction.guild
+    fo_role = discord.utils.get(guild.roles, name="Franchise Owner")
+    gm_role = discord.utils.get(guild.roles, name="General Manager")
+    hc_role = discord.utils.get(guild.roles, name="Head Coach")
+
+    if not fo_role:
+        await interaction.followup.send("❌ Franchise Owner role not found.", ephemeral=True)
+        return
+
+    team_data = {}
+
+    for fo in fo_role.members:
+        team_name = get_user_team(fo)
+        if not team_name:
+            continue
+
+        team_role = discord.utils.get(guild.roles, name=team_name)
+        if not team_role:
+            continue
+
+        # Get all members on the team
+        all_team_members = team_role.members
+        team_data[team_name] = {
+            "fo": fo,
+            "members": all_team_members
+        }
+
+    if not team_data:
+        await interaction.followup.send("No teams or FOs with matching roles found.", ephemeral=True)
+        return
+
+    embed = discord.Embed(
+        title="UFFL Team Roster",
+        description="Franchise Owners and their complete team lineups",
+        color=discord.Color.teal()
+    )
+
+    for team_name in sorted(team_data.keys()):
+        fo = team_data[team_name]["fo"]
+        members = team_data[team_name]["members"]
+        total_members = len(members)
+
+        team_list = f"**Franchise Owner**: {fo.display_name} (`{fo.id}`)\n"
+        other_members = [m for m in members if m != fo]
+
+        if other_members:
+            for m in other_members:
+                tags = []
+                if gm_role in m.roles:
+                    tags.append("GM")
+                if hc_role in m.roles:
+                    tags.append("HC")
+                role_tag = f" ({', '.join(tags)})" if tags else ""
+                team_list += f"• {m.display_name}{role_tag} (`{m.id}`)\n"
+        else:
+            team_list += "_No other members on this team._\n"
+
+        embed.add_field(
+            name=f"🏈 {team_name} — {total_members} member{'s' if total_members != 1 else ''}",
+            value=team_list,
+            inline=False
+        )
+
+    try:
+        await interaction.user.send(embed=embed)
+        await interaction.followup.send("📬 Sorted roster sent to your DMs.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.followup.send("❌ Could not send DM. Please make sure your DMs are open.", ephemeral=True)
 
 
 @bot.tree.command(name="deadline_reminder", description="DM all Franchise Owners a deadline reminder.")
