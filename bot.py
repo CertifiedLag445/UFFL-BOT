@@ -156,6 +156,10 @@ class FootballFusionBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
+        if not GUILD_ID:
+            print("❌ GUILD_ID not defined.")
+            return
+
         guild = discord.Object(id=GUILD_ID)
 
         print(f"🧹 Clearing and re-syncing commands for guild {GUILD_ID}...")
@@ -167,14 +171,16 @@ class FootballFusionBot(commands.Bot):
 
 
 
-bot = FootballFusionBot()
+
 GUILD_ID = 1307397558787899515
+bot = FootballFusionBot()
 
 @bot.event
 async def on_ready():
     guild = discord.Object(id=GUILD_ID)
     await bot.tree.sync(guild=guild)
     print(f"✅ Synced commands to guild {GUILD_ID}")
+
 
 
 
