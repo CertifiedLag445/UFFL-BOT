@@ -155,10 +155,21 @@ class FootballFusionBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
 
-async def setup_hook(self):
-    guild = discord.Object(id=GUILD_ID)
-    self.tree.copy_global_to(guild=guild)
-    await self.tree.sync(guild=guild)
+class FootballFusionBot(commands.Bot):
+    def __init__(self):
+        intents = discord.Intents.default()
+        intents.members = True
+        intents.message_content = True
+        super().__init__(command_prefix="!", intents=intents)
+
+    async def setup_hook(self):
+        guild = discord.Object(id=GUILD_ID)
+
+        print(f"🧹 Clearing and re-syncing commands for guild {GUILD_ID}...")
+        await self.tree.clear_commands(guild=guild)
+        self.tree.copy_global_to(guild=guild)
+        synced = await self.tree.sync(guild=guild)
+        print(f"✅ Synced commands: {[cmd.name for cmd in synced]}")
 
 
 
@@ -168,17 +179,8 @@ GUILD_ID = 1307397558787899515
 @bot.event
 async def on_ready():
     guild = discord.Object(id=GUILD_ID)
-
-    print(f"🔄 Resetting all commands for guild {GUILD_ID}...")
-
-    # 1. Clear all slash commands for the guild
-    await bot.tree.clear_commands(guild=guild)
-
-    # 2. Manually copy and sync from your local tree
-    bot.tree.copy_global_to(guild=guild)
-    synced = await bot.tree.sync(guild=guild)
-
-    print(f"✅ Re-synced commands: {[cmd.name for cmd in synced]}")
+    await bot.tree.sync(guild=guild)
+    print(f"✅ Synced commands to guild {GUILD_ID}")
 
 
 
