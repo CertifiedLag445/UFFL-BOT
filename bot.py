@@ -155,7 +155,7 @@ class FootballFusionBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
 
-    async def setup_hook(self):
+    async def setup_hook(self):  # 👈 Must be indented inside the class
         if not GUILD_ID:
             print("❌ GUILD_ID not defined.")
             return
@@ -166,7 +166,10 @@ class FootballFusionBot(commands.Bot):
         await self.tree.clear_commands(guild=guild)
         self.tree.copy_global_to(guild=guild)
         synced = await self.tree.sync(guild=guild)
-        print(f"✅ Synced commands: {[cmd.name for cmd in synced]}")
+        print(f"✅ Synced commands: {[cmd.name for cmd in synced]}")    
+
+
+
 
 
 
@@ -174,13 +177,6 @@ class FootballFusionBot(commands.Bot):
 
 GUILD_ID = 1307397558787899515
 bot = FootballFusionBot()
-
-@bot.event
-async def on_ready():
-    guild = discord.Object(id=GUILD_ID)
-    await bot.tree.sync(guild=guild)
-    print(f"✅ Synced commands to guild {GUILD_ID}")
-
 
 
 
