@@ -155,9 +155,6 @@ class FootballFusionBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
 
-        # ✅ Register the application command tree
-        self.tree = app_commands.CommandTree(self)
-
     async def setup_hook(self):
         guild = discord.Object(id=GUILD_ID)
 
@@ -166,6 +163,7 @@ class FootballFusionBot(commands.Bot):
         self.tree.copy_global_to(guild=guild)
         synced = await self.tree.sync(guild=guild)
         print(f"✅ Synced commands: {[cmd.name for cmd in synced]}")
+
 
 
 
