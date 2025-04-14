@@ -1,3 +1,4 @@
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -158,9 +159,6 @@ async def setup_hook(self):
     guild = discord.Object(id=GUILD_ID)
     self.tree.copy_global_to(guild=guild)
     await self.tree.sync(guild=guild)
-
-
-
 
 
 
@@ -576,30 +574,74 @@ async def deadline_reminder(interaction: discord.Interaction, deadline: str):
         f"📨 Deadline reminder sent to {count} Franchise Owner(s).", ephemeral=True
     )
 
-@bot.tree.command(name="create_game_thread", description="Create a private game thread for two users.")
-@app_commands.describe(member1="First user to invite", member2="Second user to invite")
-async def create_game_thread(interaction: discord.Interaction, member1: discord.Member, member2: discord.Member):
-    thread_name = f"{member1.display_name} vs {member2.display_name}"
+@bot.tree.command(name="game_thread", description="Create a game thread between two teams and invite FOs, GMs, HCs, and staff.")
+@app_commands.describe(team1="First team", team2="Second team")
+async def game_thread(interaction: discord.Interaction, team1: str, team2: str):
+    await interaction.response.defer(ephemeral=True)
+
+    guild = interaction.guild
+    thread_name = f"{team1} vs {team2}"
     channel = interaction.channel
 
+    team_roles = [discord.utils.get(guild.roles, name=team1), discord.utils.get(guild.roles, name=team2)]
+    if None in team_roles:
+        await interaction.followup.send("One or both team roles could not be found.", ephemeral=True)
+        return
+
+    key_roles = {"Franchise Owner", "General Manager", "Head Coach"}
+    staff_roles = {"Founder", "WORKERS"}
+
+    invited_members = set()
+
+    for member in guild.members:
+        user_roles = {role.name for role in member.roles}
+
+        # Invite all ranking officers from the two teams
+        if any(team.name in user_roles for team in team_roles) and user_roles & key_roles:
+            invited_members.add(member)
+
+        # Invite staff regardless of team
+        if user_roles & staff_roles:
+            invited_members.add(member)
+
     try:
-        thread = await channel.create_thread(name=thread_name, type=discord.ChannelType.private_thread)
+        thread = await channel.create_thread(
+            name=thread_name,
+            type=discord.ChannelType.private_thread,
+            auto_archive_duration=1440
+        )
 
-        allowed_members = {member1, member2}
-        for role_name in ["League Manager", "Admin"]:
-            role = discord.utils.get(interaction.guild.roles, name=role_name)
-            if role:
-                allowed_members.update(role.members)
-
-        for member in allowed_members:
+        for member in invited_members:
             try:
                 await thread.add_user(member)
             except Exception as e:
-                print(f"Error adding {member.display_name} to thread: {e}")
+                print(f"Failed to add {member.display_name} to thread: {e}")
 
-        await interaction.response.send_message(f"Game thread '{thread_name}' created with restricted access.", ephemeral=True)
+        await interaction.followup.send(f"✅ Game thread '{thread_name}' created and invited {len(invited_members)} members.", ephemeral=True)
+        await thread.send(f"Welcome to the game thread for **{team1} vs {team2}**!")
     except Exception as e:
-        await interaction.response.send_message(f"Error creating game thread: {e}", ephemeral=True)
+        await interaction.followup.send(f"❌ Failed to create thread: {e}", ephemeral=True)
+
+@game_thread.autocomplete("team1")
+async def team1_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> list[app_commands.Choice[str]]:
+    return [
+        app_commands.Choice(name=team, value=team)
+        for team in TEAM_NAMES
+        if current.lower() in team.lower()
+    ][:25]
+
+@game_thread.autocomplete("team2")
+async def team2_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> list[app_commands.Choice[str]]:
+    return [
+        app_commands.Choice(name=team, value=team)
+        for team in TEAM_NAMES
+        if current.lower() in team.lower()
+    ][:25]
+
 
 
 from flask import Flask
