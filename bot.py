@@ -156,19 +156,19 @@ class FootballFusionBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
 async def setup_hook(self):
-    print("🔧 setup_hook is running...")  # ADD THIS
-    if not GUILD_ID:
-        print("❌ GUILD_ID not defined.")
-        return
-
     guild = discord.Object(id=GUILD_ID)
+    print("🧹 Force-wiping ALL commands...")
 
-    print(f"🧹 Clearing and re-syncing commands for guild {GUILD_ID}...")
+    # 🔥 One-time nuclear option: clear global and guild commands
+    await self.tree.clear_commands()
     await self.tree.clear_commands(guild=guild)
-    self.tree.copy_global_to(guild=guild)
-    synced = await self.tree.sync(guild=guild)
-    print(f"✅ Synced commands: {[cmd.name for cmd in synced]}")
-  
+    await self.tree.sync()
+    await self.tree.sync(guild=guild)
+
+    print("✅ All commands cleared and re-synced.")
+
+
+    
 
 
 
