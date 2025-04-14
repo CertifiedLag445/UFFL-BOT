@@ -168,6 +168,11 @@ GUILD_ID = 1307397558787899515
 async def on_ready():
     print(f"✅ Bot is ready. Logged in as {bot.user}")
 
+async def setup_hook(self):
+    guild = discord.Object(id=GUILD_ID)
+    await self.tree.clear_commands(guild=guild)  # ← temporary
+    self.tree.copy_global_to(guild=guild)
+    await self.tree.sync(guild=guild)
 
 
 @bot.event
