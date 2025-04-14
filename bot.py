@@ -574,35 +574,33 @@ async def deadline_reminder(interaction: discord.Interaction, deadline: str):
         f"📨 Deadline reminder sent to {count} Franchise Owner(s).", ephemeral=True
     )
 
-@bot.tree.command(name="game_thread", description="Create a game thread between two teams and invite FOs, GMs, HCs, and staff.")
+@bot.tree.command(name="game_thread", description="Create a game thread between two teams. Automatically invites FOs, GMs, HCs, and staff.")
 @app_commands.describe(team1="First team", team2="Second team")
 async def game_thread(interaction: discord.Interaction, team1: str, team2: str):
     await interaction.response.defer(ephemeral=True)
 
     guild = interaction.guild
-    thread_name = f"{team1} vs {team2}"
     channel = interaction.channel
+    thread_name = f"{team1} vs {team2}"
 
     team_roles = [discord.utils.get(guild.roles, name=team1), discord.utils.get(guild.roles, name=team2)]
     if None in team_roles:
-        await interaction.followup.send("One or both team roles could not be found.", ephemeral=True)
+        await interaction.followup.send("❌ One or both team roles could not be found.", ephemeral=True)
         return
 
-    key_roles = {"Franchise Owner", "General Manager", "Head Coach"}
+    ranking_roles = {"Franchise Owner", "General Manager", "Head Coach"}
     staff_roles = {"Founder", "WORKERS"}
 
-    invited_members = set()
+    invited = set()
 
     for member in guild.members:
-        user_roles = {role.name for role in member.roles}
+        user_role_names = {r.name for r in member.roles}
+        on_team = any(tr.name in user_role_names for tr in team_roles)
+        is_ranked = user_role_names & ranking_roles
+        is_staff = user_role_names & staff_roles
 
-        # Invite all ranking officers from the two teams
-        if any(team.name in user_roles for team in team_roles) and user_roles & key_roles:
-            invited_members.add(member)
-
-        # Invite staff regardless of team
-        if user_roles & staff_roles:
-            invited_members.add(member)
+        if (on_team and is_ranked) or is_staff:
+            invited.add(member)
 
     try:
         thread = await channel.create_thread(
@@ -611,16 +609,17 @@ async def game_thread(interaction: discord.Interaction, team1: str, team2: str):
             auto_archive_duration=1440
         )
 
-        for member in invited_members:
+        for m in invited:
             try:
-                await thread.add_user(member)
+                await thread.add_user(m)
             except Exception as e:
-                print(f"Failed to add {member.display_name} to thread: {e}")
+                print(f"❌ Failed to add {m.display_name} to thread: {e}")
 
-        await interaction.followup.send(f"✅ Game thread '{thread_name}' created and invited {len(invited_members)} members.", ephemeral=True)
-        await thread.send(f"Welcome to the game thread for **{team1} vs {team2}**!")
+        await thread.send(f"🏈 Welcome to the game thread for **{team1} vs {team2}**!")
+        await interaction.followup.send(f"✅ Game thread created and invited {len(invited)} users.", ephemeral=True)
     except Exception as e:
-        await interaction.followup.send(f"❌ Failed to create thread: {e}", ephemeral=True)
+        await interaction.followup.send(f"❌ Failed to create thread: `{e}`", ephemeral=True)
+
 
 @game_thread.autocomplete("team1")
 async def team1_autocomplete(
