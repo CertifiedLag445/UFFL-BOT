@@ -128,8 +128,13 @@ GUILD_ID = 1307397558787899515
 @bot.event
 async def on_ready():
     guild = discord.Object(id=GUILD_ID)
+    
+    # This clears all commands and re-registers them fresh
+    await bot.tree.clear_commands(guild=guild)
     synced = await bot.tree.sync(guild=guild)
-    print(f"Synced {len(synced)} commands to guild {GUILD_ID}")
+
+    print(f"Force-cleared and re-synced {len(synced)} commands to guild {GUILD_ID}")
+
 
 @bot.event
 async def on_application_command_error(interaction, error):
@@ -547,4 +552,3 @@ Thread(target=run).start()
 
 import os
 bot.run(os.environ["DISCORD_TOKEN"])
-
