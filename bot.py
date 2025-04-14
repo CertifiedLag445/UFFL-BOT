@@ -155,18 +155,20 @@ class FootballFusionBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
 
-    async def setup_hook(self):  # 👈 Must be indented inside the class
-        if not GUILD_ID:
-            print("❌ GUILD_ID not defined.")
-            return
+async def setup_hook(self):
+    print("🔧 setup_hook is running...")  # ADD THIS
+    if not GUILD_ID:
+        print("❌ GUILD_ID not defined.")
+        return
 
-        guild = discord.Object(id=GUILD_ID)
+    guild = discord.Object(id=GUILD_ID)
 
-        print(f"🧹 Clearing and re-syncing commands for guild {GUILD_ID}...")
-        await self.tree.clear_commands(guild=guild)
-        self.tree.copy_global_to(guild=guild)
-        synced = await self.tree.sync(guild=guild)
-        print(f"✅ Synced commands: {[cmd.name for cmd in synced]}")    
+    print(f"🧹 Clearing and re-syncing commands for guild {GUILD_ID}...")
+    await self.tree.clear_commands(guild=guild)
+    self.tree.copy_global_to(guild=guild)
+    synced = await self.tree.sync(guild=guild)
+    print(f"✅ Synced commands: {[cmd.name for cmd in synced]}")
+  
 
 
 
