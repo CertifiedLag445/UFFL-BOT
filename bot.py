@@ -156,8 +156,6 @@ class FootballFusionBot(commands.Bot):
 
 async def setup_hook(self):
     guild = discord.Object(id=GUILD_ID)
-    await self.tree.clear_commands(guild=guild)  # one-time
-    await self.tree.clear_commands()             # one-time
     self.tree.copy_global_to(guild=guild)
     await self.tree.sync(guild=guild)
 
