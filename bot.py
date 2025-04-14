@@ -536,26 +536,43 @@ async def roster(interaction: discord.Interaction):
 
 
 @bot.tree.command(name="deadline_reminder", description="DM all Franchise Owners a deadline reminder.")
-async def deadline_reminder(interaction: discord.Interaction):
-    allowed_roles = {"League Manager", "Admin"}
+@app_commands.describe(deadline="Enter the deadline (e.g. April 20th at 11:59PM EST)")
+async def deadline_reminder(interaction: discord.Interaction, deadline: str):
+    allowed_roles = {"Founder", "WORKERS"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("You are not permitted to send deadline reminders.", ephemeral=True)
         return
 
+    await interaction.response.defer(ephemeral=True)
+
     fo_role = discord.utils.get(interaction.guild.roles, name="Franchise Owner")
-    if fo_role is None:
-        await interaction.response.send_message("Franchise Owner role not found on this server.", ephemeral=True)
+    if not fo_role:
+        await interaction.followup.send("❌ Franchise Owner role not found on this server.", ephemeral=True)
         return
+
+    embed = discord.Embed(
+        title="UFFL Weekly Reminder",
+        description=(
+            "The deadline to complete your games is coming soon!\n\n"
+            f"**🗓 Deadline: {deadline}**\n\n"
+            "Please make sure all match details are submitted before the deadline.\n"
+            "Contact league staff if any issues come up."
+        ),
+        color=discord.Color.orange()
+    )
+    embed.set_footer(text="UFFL Bot • Deadline Reminder")
 
     count = 0
     for member in fo_role.members:
         try:
-            await member.send("Reminder: The deadline for your games is coming soon! Please ensure your match details are updated.")
+            await member.send(embed=embed)
             count += 1
         except Exception as e:
-            print(f"Could not DM {member.display_name}: {e}")
+            print(f"[DEADLINE REMINDER ERROR] Could not DM {member.display_name}: {e}")
 
-    await interaction.response.send_message(f"Deadline reminders sent to {count} Franchise Owner(s).", ephemeral=True)
+    await interaction.followup.send(
+        f"📨 Deadline reminder sent to {count} Franchise Owner(s).", ephemeral=True
+    )
 
 @bot.tree.command(name="create_game_thread", description="Create a private game thread for two users.")
 @app_commands.describe(member1="First user to invite", member2="Second user to invite")
