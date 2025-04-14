@@ -114,7 +114,10 @@ class FootballFusionBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-        pass  # We'll handle sync in on_ready
+    guild = discord.Object(id=GUILD_ID)  # use your dev guild here
+    self.tree.copy_global_to(guild=guild)
+    await self.tree.sync(guild=guild)
+
 
 
 
