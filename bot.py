@@ -1,8 +1,9 @@
-
 import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.ui import View, button
+
+GUILD_ID = 1307397558787899515  # Define GUILD_ID at the top!
 
 TEAM_NAMES = [
     "Washington", "Tennessee", "Seattle", "San Francisco", "San Diego",
@@ -155,37 +156,26 @@ class FootballFusionBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
 
-async def setup_hook(self):
-    print("🧨 Force-wiping ALL GLOBAL AND GUILD COMMANDS...")
+    async def setup_hook(self):
+        print("🧨 Force-wiping ALL GLOBAL AND GUILD COMMANDS...")
 
-    # Clear all GLOBAL commands
-    await self.tree.clear_commands()
-    await self.tree.sync()
+        # Clear global commands
+        await self.tree.clear_commands(guild=None)
+        await self.tree.sync()
 
-    # Clear all GUILD commands
-    guild = discord.Object(id=GUILD_ID)
-    await self.tree.clear_commands(guild=guild)
-    await self.tree.sync(guild=guild)
+        # Clear guild commands
+        guild = discord.Object(id=GUILD_ID)
+        await self.tree.clear_commands(guild=guild)
+        await self.tree.sync(guild=guild)
 
-    print("✅ All global and guild commands wiped and re-synced.")
+        print("✅ All global and guild commands wiped and re-synced.")
 
-    # Fetch and print remaining commands for debugging
-    global_cmds = await self.tree.fetch_commands()
-    guild_cmds = await self.tree.fetch_commands(guild=guild)
+        # Debug: Print the list of commands
+        global_cmds = await self.tree.fetch_commands(guild=None)
+        guild_cmds = await self.tree.fetch_commands(guild=guild)
+        print("🌐 Global commands:", [cmd.name for cmd in global_cmds])
+        print("🏠 Guild commands:", [cmd.name for cmd in guild_cmds])
 
-    print("🌐 Global commands:", [cmd.name for cmd in global_cmds])
-    print("🏠 Guild commands:", [cmd.name for cmd in guild_cmds])
-
-
-
-
-
-
-
-
-
-
-GUILD_ID = 1307397558787899515
 bot = FootballFusionBot()
 
 
