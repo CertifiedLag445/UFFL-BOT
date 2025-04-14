@@ -168,8 +168,17 @@ GUILD_ID = 1307397558787899515
 @bot.event
 async def on_ready():
     guild = discord.Object(id=GUILD_ID)
-    await bot.tree.sync(guild=guild)
-    print(f"✅ Synced commands to guild {GUILD_ID}")
+
+    print(f"🔄 Resetting all commands for guild {GUILD_ID}...")
+
+    # 1. Clear all slash commands for the guild
+    await bot.tree.clear_commands(guild=guild)
+
+    # 2. Manually copy and sync from your local tree
+    bot.tree.copy_global_to(guild=guild)
+    synced = await bot.tree.sync(guild=guild)
+
+    print(f"✅ Re-synced commands: {[cmd.name for cmd in synced]}")
 
 
 
