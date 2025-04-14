@@ -168,12 +168,8 @@ GUILD_ID = 1307397558787899515
 @bot.event
 async def on_ready():
     guild = discord.Object(id=GUILD_ID)
-
-    # TEMP: Clear and resync to remove outdated commands
-    await bot.tree.clear_commands(guild=guild)
     await bot.tree.sync(guild=guild)
-
-    print(f"✅ Cleared and re-synced commands to guild {GUILD_ID}")
+    print(f"✅ Synced commands to guild {GUILD_ID}")
 
 
 
