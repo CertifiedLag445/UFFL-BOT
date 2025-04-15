@@ -156,40 +156,15 @@ class FootballFusionBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
 
-    async def setup_hook(self):
-        try:
-            print("🧨 Force-wiping ALL GLOBAL AND GUILD COMMANDS...")
-
-            self.tree.clear_commands(guild=None)
-            await self.tree.sync()
-
-            guild = discord.Object(id=GUILD_ID)
-            self.tree.clear_commands(guild=guild)
-            await self.tree.sync(guild=guild)
-
-            # 👇 NEW: Copy global commands to guild scope for instant visibility
-            self.tree.copy_global_to(guild=guild)
-            await self.tree.sync(guild=guild)
-
-            print("✅ All global and guild commands wiped and re-synced.")
-            global_cmds = await self.tree.fetch_commands()
-            guild_cmds = await self.tree.fetch_commands(guild=guild)
-            print("🌐 Global commands:", [cmd.name for cmd in global_cmds])
-            print("🏠 Guild commands:", [cmd.name for cmd in guild_cmds])
-        except Exception as e:
-            print(f"❌ setup_hook error: {e}")
-            raise e
-
-
-# ✅ Moved bot instantiation up so decorators can reference it
-bot = FootballFusionBot()
-
 
 
 @bot.event
 async def on_application_command_error(interaction, error):
     print(f"Command error: {error}")
 
+
+# ✅ Moved bot instantiation up so decorators can reference it
+bot = FootballFusionBot()
 
 @bot.tree.command(name="offer", description="Offer a player to join your team.")
 @app_commands.describe(target="The user to offer a spot on your team.")
@@ -672,6 +647,31 @@ def run():
     app.run(host='0.0.0.0', port=8080)
 
 Thread(target=run).start()
+
+
+@bot.event
+async def on_ready():
+    print(f"✅ Logged in as {bot.user}")
+    guild = discord.Object(id=GUILD_ID)
+
+    try:
+        # Clear both global and guild commands
+        bot.tree.clear_commands(guild=None)
+        await bot.tree.sync()
+
+        bot.tree.clear_commands(guild=guild)
+        bot.tree.copy_global_to(guild=guild)
+        await bot.tree.sync(guild=guild)
+
+        print("✅ Slash commands synced")
+        global_cmds = await bot.tree.fetch_commands()
+        guild_cmds = await bot.tree.fetch_commands(guild=guild)
+        print("🌐 Global:", [cmd.name for cmd in global_cmds])
+        print("🏠 Guild:", [cmd.name for cmd in guild_cmds])
+
+    except Exception as e:
+        print(f"❌ Error syncing slash commands: {e}")
+
 
 import os
 bot.run(os.environ["DISCORD_TOKEN"])
