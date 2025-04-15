@@ -6,6 +6,7 @@ import datetime
 import os
 import pytz
 import asyncio
+import json
 
 
 
@@ -1125,6 +1126,18 @@ Thread(target=run).start()
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
 
+
+# ✅ AUTOCOMPLETE GOES HERE
+@submit_score.autocomplete("team1")
+@submit_score.autocomplete("team2")
+@delete_score.autocomplete("team")
+@delete_score.autocomplete("opponent")
+@team_info.autocomplete("team")
+async def team_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    return [
+        app_commands.Choice(name=team, value=team)
+        for team in TEAM_NAMES if current.lower() in team.lower()
+    ][:25]
 
 import os
 bot.run(os.environ["DISCORD_TOKEN"])
