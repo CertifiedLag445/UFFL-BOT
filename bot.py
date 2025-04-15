@@ -157,20 +157,18 @@ class FootballFusionBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-        try:
-            print("🧨 Force-wiping ALL GLOBAL AND GUILD COMMANDS...")
+    try:
+        print("🧨 Force-wiping ALL GLOBAL AND GUILD COMMANDS...")
 
-            # Clear and re-sync global commands
-            self.tree.clear_commands(guild=None)
-            await self.tree.sync()
+        # Clear and re-sync global commands
+        self.tree.clear_commands(guild=None)
+        await self.tree.sync()
 
-            # Clear and re-sync guild commands
-            guild = discord.Object(id=GUILD_ID)
-            self.tree.clear_commands(guild=guild)
-            self.tree.copy_global_to(guild=guild)
-            await self.tree.sync(guild=guild)
+        # Clear and re-sync guild commands
+        guild = discord.Object(id=GUILD_ID)
+        self.tree.clear_commands(guild=guild)
 
-            # ✅ Explicitly register each command to the guild
+        # ✅ Explicitly register each command
         self.tree.add_command(ping, guild=guild)
         self.tree.add_command(offer, guild=guild)
         self.tree.add_command(release, guild=guild)
@@ -181,7 +179,6 @@ class FootballFusionBot(commands.Bot):
         self.tree.add_command(deadline_reminder, guild=guild)
         self.tree.add_command(game_thread, guild=guild)
 
-        # Sync with the guild
         await self.tree.sync(guild=guild)
 
         # Debug output
