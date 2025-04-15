@@ -159,12 +159,13 @@ class FootballFusionBot(commands.Bot):
     async def setup_hook(self):
         print("🧨 Force-wiping ALL GLOBAL AND GUILD COMMANDS...")
 
-        self.tree.clear_commands(guild=None)
+        await self.tree.clear_commands(guild=None)
         await self.tree.sync()
 
         guild = discord.Object(id=GUILD_ID)
-        self.tree.clear_commands(guild=guild)
+        await self.tree.clear_commands(guild=guild)
         await self.tree.sync(guild=guild)
+
 
         print("✅ All global and guild commands wiped and re-synced.")
 
