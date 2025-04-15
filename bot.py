@@ -1,7 +1,9 @@
 import discord
-from discord import app_commands
 from discord.ext import commands
 from discord.ui import View, button
+from discord import app_commands  
+import datetime  
+
 
 GUILD_ID = 1307397558787899515  # Define GUILD_ID at the top!
 
@@ -676,6 +678,84 @@ async def team1_autocomplete(
 
 @game_thread.autocomplete("team2")
 async def team2_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> list[app_commands.Choice[str]]:
+    return [
+        app_commands.Choice(name=team, value=team)
+        for team in TEAM_NAMES
+        if current.lower() in team.lower()
+    ][:25]
+
+from discord import app_commands
+import datetime
+
+@bot.tree.command(name="disband", description="Disband a team and notify all affected members.")
+@app_commands.describe(
+    team="Select the team to disband.",
+    reason="Explain the reason for disbanding the team."
+)
+async def disband(interaction: discord.Interaction, team: str, reason: str):
+    allowed_roles = {"Founder", "WORKERS"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
+        return
+
+    await interaction.response.defer(ephemeral=True)
+
+    guild = interaction.guild
+    team_role = discord.utils.get(guild.roles, name=team)
+    if not team_role:
+        await interaction.followup.send(f"❌ Could not find the role for team **{team}**.", ephemeral=True)
+        return
+
+    # Roles that should be removed if they exist
+    ranking_roles = ["Franchise Owner", "General Manager", "Head Coach"]
+    free_agents_role = discord.utils.get(guild.roles, name="Free agents")
+
+    affected_members = team_role.members.copy()  # All team members
+    notified = 0
+    timestamp = datetime.datetime.now().strftime("%B %d, %Y, %I:%M %p %Z")
+
+    for member in affected_members:
+        roles_to_remove = [team_role]
+        for rname in ranking_roles:
+            role = discord.utils.get(guild.roles, name=rname)
+            if role and role in member.roles:
+                roles_to_remove.append(role)
+
+        try:
+            await member.remove_roles(*roles_to_remove)
+            if free_agents_role:
+                await member.add_roles(free_agents_role)
+        except discord.Forbidden:
+            print(f"❌ Could not modify roles for {member.display_name}")
+
+        # If FO or GM, send them a DM
+        if any(r.name in {"Franchise Owner", "General Manager"} for r in member.roles):
+            try:
+                embed = discord.Embed(
+                    title="📬 UFFL - Team Disbanded",
+                    description=f"Your team **{team}** has been officially disbanded.",
+                    color=discord.Color.red()
+                )
+                embed.add_field(name="Reason", value=reason, inline=False)
+                embed.add_field(name="Disbanded by", value=interaction.user.mention, inline=True)
+                embed.add_field(name="Date", value=timestamp, inline=True)
+                embed.set_footer(text="You are now a Free Agent.")
+
+                await member.send(embed=embed)
+                notified += 1
+            except discord.Forbidden:
+                print(f"❌ Could not DM {member.display_name}")
+
+    await interaction.followup.send(
+        f"✅ Team **{team}** has been disbanded. {len(affected_members)} members affected. "
+        f"{notified} FO/GM notified by DM.",
+        ephemeral=True
+    )
+
+@disband.autocomplete("team")
+async def disband_team_autocomplete(
     interaction: discord.Interaction, current: str
 ) -> list[app_commands.Choice[str]]:
     return [
