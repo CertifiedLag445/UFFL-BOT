@@ -195,6 +195,7 @@ class FootballFusionBot(commands.Bot):
             self.tree.add_command(submit_score, guild=guild)
             self.tree.add_command(delete_score, guild=guild)
             self.tree.add_command(team_info, guild=guild)
+            self.tree.add_command(leaderboard, guild=guild)
             self.tree.add_command(debugcheck, guild=guild)
             self.tree.add_command(botcmds, guild=guild)
             await self.tree.sync(guild=guild)
@@ -1076,6 +1077,70 @@ async def team_info(interaction: discord.Interaction, team: str, season: str = "
 
     await interaction.response.send_message(embed=embed)
 
+@bot.tree.command(name="leaderboard", description="View the top teams in a selected stat category.")
+@app_commands.describe(
+    category="Select the stat category to sort by.",
+    season="Enter the season (e.g. 2025)"
+)
+@app_commands.choices(category=[
+    app_commands.Choice(name="Total Points", value="Total Points"),
+    app_commands.Choice(name="Average Points", value="Average Points"),
+    app_commands.Choice(name="Points in Single Game", value="Points in Single Game"),
+    app_commands.Choice(name="Point Differential", value="Point Differential"),
+    app_commands.Choice(name="Wins", value="Wins"),
+    app_commands.Choice(name="Losses", value="Losses")
+])
+async def leaderboard(interaction: discord.Interaction, category: app_commands.Choice[str], season: str = "2025"):
+    try:
+        with open("uffl_scores.json", "r") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        await interaction.response.send_message("❌ No score data found.", ephemeral=True)
+        return
+
+    season_data = data.get(season, {})
+    if not season_data:
+        await interaction.response.send_message(f"❌ No data found for season {season}.", ephemeral=True)
+        return
+
+    leaderboard = []
+    for team, games in season_data.items():
+        total_points = sum(g["team_score"] for g in games)
+        games_played = len(games)
+        avg_points = total_points / games_played if games_played > 0 else 0
+        max_points = max((g["team_score"] for g in games), default=0)
+        total_allowed = sum(g["opponent_score"] for g in games)
+        point_diff = total_points - total_allowed
+        wins = sum(1 for g in games if g["team_score"] > g["opponent_score"])
+        losses = sum(1 for g in games if g["team_score"] < g["opponent_score"])
+
+        stats = {
+            "Team": team,
+            "Total Points": total_points,
+            "Average Points": avg_points,
+            "Points in Single Game": max_points,
+            "Point Differential": point_diff,
+            "Wins": wins,
+            "Losses": losses
+        }
+
+        leaderboard.append(stats)
+
+    leaderboard.sort(key=lambda x: x[category.value], reverse=True)
+    top5 = leaderboard[:5]
+
+    embed = discord.Embed(
+        title=f"📊 Leaderboard — {category.name}",
+        description=f"_Season: {season}_",
+        color=discord.Color.purple()
+    )
+
+    for idx, entry in enumerate(top5, start=1):
+        medal = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}."
+        value = f"**{entry['Team']}** — `{entry[category.value]}`"
+        embed.add_field(name=f"{medal}", value=value, inline=False)
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 @bot.tree.command(name="botcmds", description="DMs you a list of all bot commands.")
