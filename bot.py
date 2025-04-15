@@ -182,7 +182,6 @@ class FootballFusionBot(commands.Bot):
             self.tree.add_command(game_thread, guild=guild)
             self.tree.add_command(disband, guild=guild)
             self.tree.add_command(debugcheck, guild=guild)
-
             await self.tree.sync(guild=guild)
 
             # Debug output
@@ -691,6 +690,9 @@ async def team2_autocomplete(
 from discord import app_commands
 import datetime
 
+from discord import app_commands
+import datetime
+
 @bot.tree.command(name="disband", description="Disband a team and notify all affected members.")
 @app_commands.describe(
     team="Select the team to disband.",
@@ -710,15 +712,16 @@ async def disband(interaction: discord.Interaction, team: str, reason: str):
         await interaction.followup.send(f"❌ Could not find the role for team **{team}**.", ephemeral=True)
         return
 
-    # Roles that should be removed if they exist
     ranking_roles = ["Franchise Owner", "General Manager", "Head Coach"]
     free_agents_role = discord.utils.get(guild.roles, name="Free agents")
 
-    affected_members = team_role.members.copy()  # All team members
+    affected_members = team_role.members.copy()
     notified = 0
     timestamp = datetime.datetime.now().strftime("%B %d, %Y, %I:%M %p %Z")
 
     for member in affected_members:
+        original_roles = [r.name for r in member.roles]
+
         roles_to_remove = [team_role]
         for rname in ranking_roles:
             role = discord.utils.get(guild.roles, name=rname)
@@ -732,8 +735,7 @@ async def disband(interaction: discord.Interaction, team: str, reason: str):
         except discord.Forbidden:
             print(f"❌ Could not modify roles for {member.display_name}")
 
-        # If FO or GM, send them a DM
-        if any(r.name in {"Franchise Owner", "General Manager"} for r in member.roles):
+        if any(r in {"Franchise Owner", "General Manager"} for r in original_roles):
             try:
                 embed = discord.Embed(
                     title="📬 UFFL - Team Disbanded",
