@@ -235,11 +235,6 @@ async def offer(interaction: discord.Interaction, target: discord.Member):
         await interaction.followup.send("You do not have permission to use this command.", ephemeral=True)
         return
 
-
-    if "Franchise Owner" not in [r.name for r in interaction.user.roles]:
-        await interaction.followup.send("Only Franchise Owners can offer players.", ephemeral=True)
-        return
-
     team_name = get_user_team(interaction.user)
     if not team_name:
         await interaction.followup.send("I couldn't figure out your team. Make sure you have a team role matching your team name.", ephemeral=True)
