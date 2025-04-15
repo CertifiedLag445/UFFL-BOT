@@ -869,7 +869,6 @@ async def gametime_team2_autocomplete(interaction: discord.Interaction, current:
     team="Select the team to assign."
 )
 async def give_role(interaction: discord.Interaction, user: discord.Member, team: str):
-    # Permissions check
     allowed_roles = {"Founder", "WORKERS"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
@@ -878,21 +877,23 @@ async def give_role(interaction: discord.Interaction, user: discord.Member, team
     guild = interaction.guild
     team_role = discord.utils.get(guild.roles, name=team)
     fo_role = discord.utils.get(guild.roles, name="Franchise Owner")
+    free_agents_role = discord.utils.get(guild.roles, name="Free agents")
 
     if not team_role or not fo_role:
         await interaction.response.send_message("❌ Role not found. Please check your server's roles.", ephemeral=True)
         return
 
-    # Check if any member has this team role already
     if any(team_role in member.roles for member in guild.members):
         await interaction.response.send_message(f"❌ The team **{team}** is already taken.", ephemeral=True)
         return
 
-    # Assign roles
     try:
         await user.add_roles(fo_role, team_role)
 
-        # DM the user
+        # Remove Free agents role if present
+        if free_agents_role and free_agents_role in user.roles:
+            await user.remove_roles(free_agents_role)
+
         try:
             embed = discord.Embed(
                 title="🏈 UFFL - You're a Franchise Owner!",
@@ -908,6 +909,7 @@ async def give_role(interaction: discord.Interaction, user: discord.Member, team
 
     except discord.Forbidden:
         await interaction.response.send_message("❌ I don't have permission to assign roles to this user.", ephemeral=True)
+
 
 @give_role.autocomplete("team")
 async def give_role_team_autocomplete(
