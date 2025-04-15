@@ -856,108 +856,33 @@ async def gametime_team2_autocomplete(interaction: discord.Interaction, current:
     ][:25]
 
 
-@bot.tree.command(name="botcmds", description="DMs you a list of all bot commands and how they work.")
+@bot.tree.command(name="botcmds", description="DMs you a list of all bot commands.")
 async def botcmds(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
-
-    chunks = [
-        """
-/OFFER
-Send a team invite to a free agent.
-- Only Franchise Owners and General Managers can use it
-- Automatically detects which team the sender is on
-- Sends a DM to the selected user with Accept / Decline buttons
-- If Accepted: adds team role, removes "Free agents"
-- If declined, the process ends silently
-- If sent by a GM, the FO is notified via DM
-""",
-        """
-/RELEASE
-Remove a player from your team.
-- FO or GM only
-- Target must have same team role as sender
-- Removes team, GM, HC roles
-- Adds Free agents
-- Sends DM to released user
-- FO is notified if GM initiated it
-
-/DEMAND
-Player requests release from team.
-- FO cannot use this (must transfer FO first)
-- Prompts confirmation
-- Removes team role, adds Free agents
-- Alerts FO via DM
-""",
-        """
-/PROMOTE
-Promote a teammate to HC, GM, or FO.
-- FO only
-- Target must be on same team
-- Adds correct role
-- Sends confirmation for FO transfers
-- Sends DM to target
-
-/DEMOTE
-Demote HC or GM
-- FO only
-- Target must be on same team
-- Removes the role
-- Sends DM to target
-""",
-        """
-/ROSTER
-View full team rosters
-- FO, WORKERS, Founder only
-- Lists FOs and tagged members (GM, HC)
-- Sends detailed DM to the user
-
-/DEADLINE_REMINDER
-DM all FOs a deadline reminder
-- WORKERS or Founder only
-- Broadcasts a custom message to all FOs
-- Reports number of successful DMs
-""",
-        """
-/GAME_THREAD
-Create a private thread for a match
-- Founder and WORKERS only
-- Adds FO, GM, HC from each team
-- Also adds staff (Founder/WORKERS)
-- Thread opens with welcome message
-
-/DISBAND
-Disband a full team
-- Founder or WORKERS only
-- Select team + write reason
-- Removes team + ranking roles
-- Adds Free agents
-- Notifies affected FO/GM users with reason + timestamp
-""",
-        """
-/GAMETIME
-Schedule a game
-- FO, Founder, or WORKERS only
-- Inputs: team1, team2, EST game time, private server link
-- Finds and tags each FO
-- Posts styled embed in announcement channel
-- Includes a “Join Here” link and kickoff info
-
-/DEBUGCHECK
-Quick test to check if slash commands are active
-
-/BOTCMDS
-This command
-- Sends all command info directly to you in chunks via DM
-"""
-    ]
-
     try:
-        for chunk in chunks:
-            await interaction.user.send(chunk.strip())
-        await interaction.followup.send("📬 Bot commands sent to your DMs.", ephemeral=True)
-    except discord.Forbidden:
-        await interaction.followup.send("❌ I couldn't DM you. Please open your DMs.", ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
 
+        # Path to the .txt file (must be in your deployed folder or properly pathed)
+        file_path = "uffl_bot_commands_2025-04-15_15-41.txt"
+
+        # Check if the file exists
+        if not os.path.isfile(file_path):
+            await interaction.followup.send("❌ Command guide file not found.", ephemeral=True)
+            return
+
+        # DM the user with the file attached
+        with open(file_path, "rb") as f:
+            await interaction.user.send(
+                content="Here’s a full list of bot commands and how they work:",
+                file=discord.File(f, filename=os.path.basename(file_path))
+            )
+
+        await interaction.followup.send("📬 Command guide sent to your DMs.", ephemeral=True)
+
+    except discord.Forbidden:
+        await interaction.followup.send("❌ I couldn't DM you. Please make sure your DMs are open.", ephemeral=True)
+    except Exception as e:
+        print(f"[botcmds ERROR] {e}")
+        await interaction.followup.send("❌ Something went wrong while trying to send the command guide.", ephemeral=True)
 
 
 from flask import Flask
