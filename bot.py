@@ -191,6 +191,8 @@ class FootballFusionBot(commands.Bot):
             self.tree.add_command(disband, guild=guild)
             self.tree.add_command(gametime, guild=guild)
             self.tree.add_command(give_role, guild=guild)
+            self.tree.add_command(submit_score, guild=guild)
+            self.tree.add_command(team_info, guild=guild)
             self.tree.add_command(debugcheck, guild=guild)
             self.tree.add_command(botcmds, guild=guild)
             await self.tree.sync(guild=guild)
@@ -934,6 +936,101 @@ async def give_role_team_autocomplete(
         app_commands.Choice(name=team, value=team)
         for team in available_teams if current.lower() in team.lower()
     ][:25]
+
+
+@bot.tree.command(name="submit_score", description="Submit a final score between two teams for stat tracking.")
+@app_commands.describe(
+    team1="First team name",
+    score1="Score for the first team",
+    team2="Second team name",
+    score2="Score for the second team",
+    season="Enter the season (e.g. 2025)"
+)
+async def submit_score(interaction: discord.Interaction, team1: str, score1: int, team2: str, score2: int, season: str = "2025"):
+    allowed_roles = {"Founder", "WORKERS"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.response.send_message("❌ You don’t have permission to submit scores.", ephemeral=True)
+        return
+
+    if team1 == team2:
+        await interaction.response.send_message("❌ Team names must be different.", ephemeral=True)
+        return
+
+    try:
+        with open("uffl_scores.json", "r") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        data = {}
+
+    data.setdefault(season, {})
+    for team in [team1, team2]:
+        data[season].setdefault(team, [])
+
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    data[season][team1].append({
+        "opponent": team2,
+        "team_score": score1,
+        "opponent_score": score2,
+        "date": today
+    })
+
+    data[season][team2].append({
+        "opponent": team1,
+        "team_score": score2,
+        "opponent_score": score1,
+        "date": today
+    })
+
+    with open("uffl_scores.json", "w") as f:
+        json.dump(data, f, indent=4)
+
+    await interaction.response.send_message(
+        f"✅ Score submitted:\n• {team1}: {score1}\n• {team2}: {score2}\n• Season: {season}", ephemeral=True
+    )
+
+@bot.tree.command(name="team_info", description="View stats for a specific team in a given season.")
+@app_commands.describe(
+    team="The team name",
+    season="Season to query (e.g. 2025)"
+)
+async def team_info(interaction: discord.Interaction, team: str, season: str = "2025"):
+    try:
+        with open("uffl_scores.json", "r") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        await interaction.response.send_message("⚠️ No score data found yet.", ephemeral=True)
+        return
+
+    season_data = data.get(season, {})
+    team_games = season_data.get(team, [])
+
+    if not team_games:
+        await interaction.response.send_message(f"📭 No data for **{team}** in season {season}.", ephemeral=True)
+        return
+
+    wins = sum(1 for g in team_games if g["team_score"] > g["opponent_score"])
+    losses = sum(1 for g in team_games if g["team_score"] < g["opponent_score"])
+    scores = [g["team_score"] for g in team_games]
+    total_points = sum(scores)
+    points_allowed = sum(g["opponent_score"] for g in team_games)
+    avg_score = total_points / len(scores)
+    point_diff = total_points - points_allowed
+
+    embed = discord.Embed(
+        title=f"📊 {team} Team Stats ({season})",
+        color=discord.Color.green()
+    )
+    embed.add_field(name="Wins", value=str(wins))
+    embed.add_field(name="Losses", value=str(losses))
+    embed.add_field(name="Games Played", value=str(len(scores)))
+    embed.add_field(name="Average Score", value=f"{avg_score:.2f}")
+    embed.add_field(name="Highest Score", value=str(max(scores)))
+    embed.add_field(name="Lowest Score", value=str(min(scores)))
+    embed.add_field(name="Point Differential", value=f"{point_diff:+}")
+
+    await interaction.response.send_message(embed=embed)
+
 
 
 @bot.tree.command(name="botcmds", description="DMs you a list of all bot commands.")
