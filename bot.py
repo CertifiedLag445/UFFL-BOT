@@ -187,8 +187,10 @@ class FootballFusionBot(commands.Bot):
             self.tree.add_command(roster, guild=guild)
             self.tree.add_command(deadline_reminder, guild=guild)
             self.tree.add_command(game_thread, guild=guild)
+            self.tree.add_command(close_thread, guild=guild)
             self.tree.add_command(disband, guild=guild)
             self.tree.add_command(gametime, guild=guild)
+            self.tree.add_command(give_role, guild=guild)
             self.tree.add_command(debugcheck, guild=guild)
             self.tree.add_command(botcmds, guild=guild)
             await self.tree.sync(guild=guild)
@@ -695,13 +697,21 @@ async def team2_autocomplete(
         if current.lower() in team.lower()
     ][:25]
 
-from discord import app_commands
-import datetime
+@bot.tree.command(name="close_thread", description="Delete the current thread. For use in UFFL game threads.")
+async def close_thread(interaction: discord.Interaction):
+    allowed_roles = {"Founder", "WORKERS"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.response.send_message("❌ You don’t have permission to close threads.", ephemeral=True)
+        return
 
-from discord import app_commands
-import datetime
+    if not isinstance(interaction.channel, discord.Thread):
+        await interaction.response.send_message("⚠️ This command can only be used inside a thread.", ephemeral=True)
+        return
 
-import asyncio  # Make sure this is at the top of your file with other imports
+    await interaction.response.send_message("🧹 Closing and deleting this thread...", ephemeral=True)
+    await interaction.channel.delete()
+
+
 
 @bot.tree.command(name="disband", description="Disband a team and notify all affected members.")
 @app_commands.describe(
@@ -850,6 +860,66 @@ async def gametime_team2_autocomplete(interaction: discord.Interaction, current:
     return [
         app_commands.Choice(name=team, value=team)
         for team in TEAM_NAMES if current.lower() in team.lower()
+    ][:25]
+
+
+@bot.tree.command(name="give_role", description="Assign the FO role and an available team role to a user.")
+@app_commands.describe(
+    user="The user to assign the Franchise Owner role to.",
+    team="Select the team to assign."
+)
+async def give_role(interaction: discord.Interaction, user: discord.Member, team: str):
+    # Permissions check
+    allowed_roles = {"Founder", "WORKERS"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
+        return
+
+    guild = interaction.guild
+    team_role = discord.utils.get(guild.roles, name=team)
+    fo_role = discord.utils.get(guild.roles, name="Franchise Owner")
+
+    if not team_role or not fo_role:
+        await interaction.response.send_message("❌ Role not found. Please check your server's roles.", ephemeral=True)
+        return
+
+    # Check if any member has this team role already
+    if any(team_role in member.roles for member in guild.members):
+        await interaction.response.send_message(f"❌ The team **{team}** is already taken.", ephemeral=True)
+        return
+
+    # Assign roles
+    try:
+        await user.add_roles(fo_role, team_role)
+
+        # DM the user
+        try:
+            embed = discord.Embed(
+                title="🏈 UFFL - You're a Franchise Owner!",
+                description=f"You've been assigned as the **Franchise Owner** of **{team}**.",
+                color=discord.Color.green()
+            )
+            embed.set_footer(text="Lead your team with pride.")
+            await user.send(embed=embed)
+        except discord.Forbidden:
+            print(f"❌ Could not DM {user.display_name}")
+
+        await interaction.response.send_message(f"✅ {user.mention} has been made FO of **{team}**.", ephemeral=True)
+
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I don't have permission to assign roles to this user.", ephemeral=True)
+
+@give_role.autocomplete("team")
+async def give_role_team_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> list[app_commands.Choice[str]]:
+    guild = interaction.guild
+    unavailable_teams = {role.name for member in guild.members for role in member.roles if role.name in TEAM_NAMES}
+    available_teams = [team for team in TEAM_NAMES if team not in unavailable_teams]
+
+    return [
+        app_commands.Choice(name=team, value=team)
+        for team in available_teams if current.lower() in team.lower()
     ][:25]
 
 
