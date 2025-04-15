@@ -155,10 +155,10 @@ class FootballFusionBot(commands.Bot):
         intents.members = True
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
-        self.synced = False  # NEW: Add a flag to prevent premature setup
+        self.synced = False
 
     async def setup_hook(self):
-        if self.synced:  # Prevent syncing before commands are registered
+        if self.synced:
             return
         self.synced = True
 
@@ -183,6 +183,8 @@ class FootballFusionBot(commands.Bot):
             print(f"❌ setup_hook error: {e}")
             raise e
 
+# ✅ Moved bot instantiation up so decorators can reference it
+bot = FootballFusionBot()
 
 
 
@@ -672,8 +674,6 @@ def run():
     app.run(host='0.0.0.0', port=8080)
 
 Thread(target=run).start()
-
-bot = FootballFusionBot()
 
 import os
 bot.run(os.environ["DISCORD_TOKEN"])
