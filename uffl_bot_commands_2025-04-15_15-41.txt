@@ -73,6 +73,10 @@ Function: Assigns a user the Franchise Owner role and a team role. Only availabl
 Who can use: WORKERS, Founder
 Function: Logs the final result of a UFFL match between two teams. Adds the result to team stat history for that season.
 
+/delete_score [team] [opponent] [date] [season]
+Who can use: WORKERS, Founder
+Function: Deletes a previously submitted match result from both teams’ history. Use this if a score was entered incorrectly. Must match exact date and opponent.
+
 /team_info [team] [season]
 Who can use: Anyone
 Function: Displays current W/L record, average score, point differential, and other season stats for the selected team.
