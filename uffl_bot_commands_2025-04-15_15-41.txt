@@ -68,4 +68,13 @@ Function: Deletes the current private thread if the command is run from inside o
 /give_role [user]
 Who can use: WORKERS, Founder
 Function: Assigns a user the Franchise Owner role and a team role. Only available team roles (not currently assigned to any member) are shown as options. After the role is assigned, the user receives a DM informing them of their FO status and team.
+
+/submit_score [team1] [score1] [team2] [score2] [season]
+Who can use: WORKERS, Founder
+Function: Logs the final result of a UFFL match between two teams. Adds the result to team stat history for that season.
+
+/team_info [team] [season]
+Who can use: Anyone
+Function: Displays current W/L record, average score, point differential, and other season stats for the selected team.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
