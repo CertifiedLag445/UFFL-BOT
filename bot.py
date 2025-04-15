@@ -156,15 +156,14 @@ class FootballFusionBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
 
-
+# ✅ Moved bot instantiation up so decorators can reference it
+bot = FootballFusionBot()
 
 @bot.event
 async def on_application_command_error(interaction, error):
     print(f"Command error: {error}")
 
 
-# ✅ Moved bot instantiation up so decorators can reference it
-bot = FootballFusionBot()
 
 @bot.tree.command(name="offer", description="Offer a player to join your team.")
 @app_commands.describe(target="The user to offer a spot on your team.")
