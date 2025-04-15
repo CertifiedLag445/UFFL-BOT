@@ -968,7 +968,7 @@ async def submit_score(interaction: discord.Interaction, team1: str, score1: int
     for team in [team1, team2]:
         data[season].setdefault(team, [])
 
-    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    today = datetime.datetime.now().strftime("%m-%d-%Y")
 
     data[season][team1].append({
         "opponent": team2,
@@ -995,7 +995,7 @@ async def submit_score(interaction: discord.Interaction, team1: str, score1: int
 @app_commands.describe(
     team="The team you are removing the score for",
     opponent="Opponent team",
-    date="The date of the game (YYYY-MM-DD)",
+    date="The date of the game (MM-DD-YYYY)",
     season="Season (e.g. 2025)"
 )
 async def delete_score(interaction: discord.Interaction, team: str, opponent: str, date: str, season: str = "2025"):
