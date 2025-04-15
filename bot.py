@@ -8,7 +8,7 @@ import pytz
 
 
 GUILD_ID = 1307397558787899515  # Define GUILD_ID at the top!
-ANNOUNCEMENT_CHANNEL_ID = 1328457848878923859  # 🛠️ Replace with your actual channel ID
+ANNOUNCEMENT_CHANNEL_ID = 1309364152690675803  # 🛠️ Replace with your actual channel ID
 
 
 TEAM_NAMES = [
