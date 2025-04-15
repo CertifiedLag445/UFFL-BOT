@@ -81,4 +81,7 @@ Function: Deletes a previously submitted match result from both teams’ history
 Who can use: Anyone
 Function: Displays current W/L record, average score, point differential, and other season stats for the selected team.
 
+/leaderboard [category] [season]
+Who can use: Anyone
+Function: Displays a top 5 leaderboard sorted by the selected stat category for a given season. Options include Total Points, Average Points, Point Differential, and more. Output is private to the user.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
