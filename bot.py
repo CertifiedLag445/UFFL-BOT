@@ -612,6 +612,11 @@ async def deadline_reminder(interaction: discord.Interaction, deadline: str):
         f"📨 Deadline reminder sent to {count} Franchise Owner(s).", ephemeral=True
     )
 
+@bot.tree.command(name="debugcheck", description="Check if slash commands are active")
+async def debugcheck(interaction: discord.Interaction):
+    await interaction.response.send_message("✅ Slash commands are live!", ephemeral=True)
+
+
 @bot.tree.command(name="game_thread", description="Create a game thread between two teams. Automatically invites FOs, GMs, HCs, and staff.")
 @app_commands.describe(team1="First team", team2="Second team")
 async def game_thread(interaction: discord.Interaction, team1: str, team2: str):
