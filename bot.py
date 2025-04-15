@@ -8,7 +8,7 @@ import pytz
 
 
 GUILD_ID = 1307397558787899515  # Define GUILD_ID at the top!
-ANNOUNCEMENT_CHANNEL_ID = 1309364152690675803  # 🛠️ Replace with your actual channel ID
+ANNOUNCEMENT_CHANNEL_ID = 1223456789012345678  # 🛠️ Replace with your actual channel ID
 
 
 TEAM_NAMES = [
@@ -776,50 +776,65 @@ async def disband_team_autocomplete(
     ][:25]
 
 
-@bot.tree.command(name="gametime", description="Announce an upcoming UFFL game between two teams.")
+@bot.tree.command(name="gametime", description="Announce a scheduled UFFL match with team FOs, time, and private server link.")
 @app_commands.describe(
-    team1="First team",
-    team2="Second team",
-    time_est="Game start time (EST)",
-    server_link="Private server link"
+    team1="First team name",
+    team2="Second team name",
+    time_est="Time the match is scheduled to start (in EST)",
+    private_server_link="Link to the private server"
 )
-async def gametime(interaction: discord.Interaction, team1: str, team2: str, time_est: str, server_link: str):
-    await interaction.response.defer(ephemeral=True)
-    guild = interaction.guild
-    channel = guild.get_channel(ANNOUNCEMENT_CHANNEL_ID)
-
-    if not channel:
-        await interaction.followup.send("❌ Could not find the announcement channel.", ephemeral=True)
+async def gametime(interaction: discord.Interaction, team1: str, team2: str, time_est: str, private_server_link: str):
+    allowed_roles = {"Franchise Owner", "Founder", "WORKERS"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.response.send_message("❌ You don't have permission to use this command.", ephemeral=True)
         return
 
-    def find_fo(team_name):
-        role = discord.utils.get(guild.roles, name=team_name)
+    await interaction.response.defer(ephemeral=True)
+
+    guild = interaction.guild
+    role1 = discord.utils.get(guild.roles, name=team1)
+    role2 = discord.utils.get(guild.roles, name=team2)
+
+    if not role1 or not role2:
+        await interaction.followup.send("❌ One or both team roles were not found.", ephemeral=True)
+        return
+
+    def find_fo(role):
         fo_role = discord.utils.get(guild.roles, name="Franchise Owner")
-        if not role or not fo_role:
+        if not fo_role:
             return None
-        for member in role.members:
-            if fo_role in member.roles:
+        for member in fo_role.members:
+            if role in member.roles:
                 return member
         return None
 
-    fo1 = find_fo(team1)
-    fo2 = find_fo(team2)
+    fo1 = find_fo(role1)
+    fo2 = find_fo(role2)
 
     if not fo1 or not fo2:
-        await interaction.followup.send("❌ Could not find Franchise Owners for both teams.", ephemeral=True)
+        await interaction.followup.send("❌ Could not find Franchise Owner(s) for one or both teams.", ephemeral=True)
         return
 
     embed = discord.Embed(
-        title="🏈 UFFL MATCH ANNOUNCEMENT",
-        color=discord.Color.green()
+        title="🏈 UFFL MATCH",
+        description=(
+            f"**{team1}** vs **{team2}**\n"
+            f"• **Franchise Owners:** {fo1.mention} vs {fo2.mention}\n"
+            f"• **Kickoff Time:** {time_est} (EST)\n"
+            f"• [**Join Here!**]({private_server_link})"
+        ),
+        color=discord.Color.blurple()
     )
-    embed.add_field(name="🔹 Teams", value=f"**{team1}** (FO: {fo1.mention}) 🆚 **{team2}** (FO: {fo2.mention})", inline=False)
-    embed.add_field(name="⏰ Kickoff Time", value=f"{time_est} EST", inline=False)
-    embed.add_field(name="🎮 Private Server", value=f"[Join Here!]({server_link})", inline=False)
-    embed.set_footer(text="UFFL Bot • Game Notification")
+    embed.set_footer(text="UFFL Bot • Game Schedule")
+
+    channel = guild.get_channel(ANNOUNCEMENT_CHANNEL_ID)
+    if not channel:
+        await interaction.followup.send("❌ Announcement channel not found. Please check the channel ID.", ephemeral=True)
+        return
 
     await channel.send(embed=embed)
-    await interaction.followup.send("✅ Game announcement sent!", ephemeral=True)
+    await interaction.followup.send("📣 Game announcement sent!", ephemeral=True)
+
 
 @gametime.autocomplete("team1")
 async def gametime_team1_autocomplete(interaction: discord.Interaction, current: str):
