@@ -1224,7 +1224,8 @@ async def on_message(message: discord.Message):
         1329697045476409372,
         1361143016726991041,
         888875111766196255,
-        797306007579656223
+        797306007579656223,
+        1149468942377681066
     ]
 
     EXCLUDED_ROLES = {"Founder", "WORKERS", "UFFL BOT!"}
