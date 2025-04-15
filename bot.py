@@ -12,7 +12,7 @@ import json
 
 
 GUILD_ID = 1307397558787899515  # Define GUILD_ID at the top!
-ANNOUNCEMENT_CHANNEL_ID = 1309364152690675803  # 🛠️ Replace with your actual channel ID
+ANNOUNCEMENT_CHANNEL_ID = 1309364152690675803 # 🛠️ Replace with your actual channel ID
 
 
 TEAM_NAMES = [
@@ -968,7 +968,7 @@ async def submit_score(interaction: discord.Interaction, team1: str, score1: int
     for team in [team1, team2]:
         data[season].setdefault(team, [])
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
 
     data[season][team1].append({
         "opponent": team2,
