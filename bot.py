@@ -2,6 +2,8 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from discord.ui import View, button
+from collections import defaultdict   
+from datetime import timedelta        
 import datetime
 import os
 import pytz
@@ -13,6 +15,8 @@ import json
 
 GUILD_ID = 1307397558787899515  # Define GUILD_ID at the top!
 ANNOUNCEMENT_CHANNEL_ID = 1309364152690675803 # 🛠️ Replace with your actual channel ID
+MOD_LOG_CHANNEL_ID = 1361455371654398015  # replace with your actual mod-log channel ID
+
 
 
 TEAM_NAMES = [
@@ -1203,6 +1207,75 @@ async def team_autocomplete(interaction: discord.Interaction, current: str) -> l
         app_commands.Choice(name=team, value=team)
         for team in TEAM_NAMES if current.lower() in team.lower()
     ][:25]
+
+from collections import defaultdict
+from datetime import timedelta
+
+user_offense_counts = defaultdict(int)
+
+@bot.event
+async def on_message(message: discord.Message):
+    if message.author.bot:
+        return
+
+    blacklisted_words = [
+        "nigga",
+        "nigger",
+        "join my server",
+        "join my discord",
+        ".gg",
+    ]
+
+    content = message.content.lower()
+    contains_blacklisted = any(word in content for word in blacklisted_words) or \
+        "discord.gg/" in content or "discord.com/invite/" in content
+
+    if contains_blacklisted:
+        try:
+            await message.delete()
+        except discord.Forbidden:
+            print("⚠️ Can't delete message.")
+
+        user = message.author
+        offense_count = user_offense_counts[user.id] = user_offense_counts[user.id] + 1
+
+        log_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
+
+        action_taken = ""
+        try:
+            if offense_count == 1:
+                await user.send("⚠️ Please do not post blacklisted links or phrases in the server.")
+                action_taken = "Sent DM warning"
+            elif offense_count == 2:
+                await user.timeout(timedelta(minutes=5), reason="2nd offense - blacklisted content")
+                await message.channel.send(f"{user.mention} has been timed out for 5 minutes.", delete_after=5)
+                action_taken = "5-minute timeout"
+            elif offense_count == 3:
+                await user.timeout(timedelta(hours=3), reason="3rd offense - blacklisted content")
+                await message.channel.send(f"{user.mention} has been timed out for 3 hours.", delete_after=5)
+                action_taken = "3-hour timeout"
+            elif offense_count >= 4:
+                await user.kick(reason="4th offense - repeated blacklisted content")
+                await message.channel.send(f"{user.mention} has been kicked for repeated violations.", delete_after=5)
+                action_taken = "User kicked"
+        except discord.Forbidden:
+            action_taken = "❌ Missing permissions to take action"
+        except Exception as e:
+            action_taken = f"❌ Error: {e}"
+
+        # 📝 Log to mod channel
+        if log_channel:
+            await log_channel.send(
+                f"🚨 **Blacklist Violation**\n"
+                f"User: {user.mention} (`{user.id}`)\n"
+                f"Offense #{offense_count}\n"
+                f"Action Taken: {action_taken}\n"
+                f"Message Content: `{message.content[:500]}`"
+            )
+
+    await bot.process_commands(message)
+
+
 
 import os
 bot.run(os.environ["DISCORD_TOKEN"])
