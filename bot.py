@@ -157,43 +157,47 @@ class FootballFusionBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-    try:
-        print("🧨 Force-wiping ALL GLOBAL AND GUILD COMMANDS...")
+        try:
+            print("🧨 Force-wiping ALL GLOBAL AND GUILD COMMANDS...")
 
-        # Clear and re-sync global commands
-        self.tree.clear_commands(guild=None)
-        await self.tree.sync()
+            # Clear and re-sync global commands
+            self.tree.clear_commands(guild=None)
+            await self.tree.sync()
 
-        # Clear and re-sync guild commands
-        guild = discord.Object(id=GUILD_ID)
-        self.tree.clear_commands(guild=guild)
+            # Clear and re-sync guild commands
+            guild = discord.Object(id=GUILD_ID)
+            self.tree.clear_commands(guild=guild)
 
-        # ✅ Explicitly register each command
-        self.tree.add_command(ping, guild=guild)
-        self.tree.add_command(offer, guild=guild)
-        self.tree.add_command(release, guild=guild)
-        self.tree.add_command(demand, guild=guild)
-        self.tree.add_command(promote, guild=guild)
-        self.tree.add_command(demote, guild=guild)
-        self.tree.add_command(roster, guild=guild)
-        self.tree.add_command(deadline_reminder, guild=guild)
-        self.tree.add_command(game_thread, guild=guild)
+            # ✅ Register each command manually
+            self.tree.add_command(ping, guild=guild)
+            self.tree.add_command(offer, guild=guild)
+            self.tree.add_command(release, guild=guild)
+            self.tree.add_command(demand, guild=guild)
+            self.tree.add_command(promote, guild=guild)
+            self.tree.add_command(demote, guild=guild)
+            self.tree.add_command(roster, guild=guild)
+            self.tree.add_command(deadline_reminder, guild=guild)
+            self.tree.add_command(game_thread, guild=guild)
 
-        await self.tree.sync(guild=guild)
+            await self.tree.sync(guild=guild)
 
-        # Debug output
-        print("✅ All global and guild commands wiped and re-synced.")
-        global_cmds = await self.tree.fetch_commands()
-        guild_cmds = await self.tree.fetch_commands(guild=guild)
-        print("🌐 Global commands:", [cmd.name for cmd in global_cmds])
-        print("🏠 Guild commands:", [cmd.name for cmd in guild_cmds])
+            # Debug output
+            print("✅ All global and guild commands wiped and re-synced.")
+            global_cmds = await self.tree.fetch_commands()
+            guild_cmds = await self.tree.fetch_commands(guild=guild)
+            print("🌐 Global commands:", [cmd.name for cmd in global_cmds])
+            print("🏠 Guild commands:", [cmd.name for cmd in guild_cmds])
 
-    except Exception as e:
-        print(f"❌ setup_hook error: {e}")
-        raise e
-# ✅ Moved bot instantiation up so decorators can reference it
+        except Exception as e:
+            print(f"❌ setup_hook error: {e}")
+            raise e
+
+
+# ✅ Instantiate bot
 bot = FootballFusionBot()
 
+
+# ✅ Add ping as a test command
 @bot.tree.command(name="ping")
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message("Pong!", ephemeral=True)
@@ -201,10 +205,10 @@ async def ping(interaction: discord.Interaction):
 print("✅ Ping command loaded")
 
 
+# ✅ Error logging
 @bot.event
 async def on_application_command_error(interaction, error):
     print(f"Command error: {error}")
-
 
 
 @bot.tree.command(name="offer", description="Offer a player to join your team.")
