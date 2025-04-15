@@ -735,9 +735,17 @@ async def disband(interaction: discord.Interaction, team: str, reason: str):
     ranking_roles = ["Franchise Owner", "General Manager", "Head Coach"]
     free_agents_role = discord.utils.get(guild.roles, name="Free agents")
     affected_members = team_role.members.copy()
-    timestamp = datetime.datetime.now(datetime.timezone.utc).astimezone(datetime.timezone(datetime.timedelta(hours=-5))).strftime("%B %d, %Y, %I:%M %p EST")
-    notified = 0
+    timestamp = datetime.datetime.now(datetime.timezone.utc).astimezone(
+        datetime.timezone(datetime.timedelta(hours=-5))
+    ).strftime("%B %d, %Y, %I:%M %p EST")
 
+    # Capture FO/GM members BEFORE role removal
+    users_to_notify = [
+        member for member in affected_members
+        if any(role.name in {"Franchise Owner", "General Manager"} for role in member.roles)
+    ]
+
+    # Remove team and ranking roles + assign Free agents
     for member in affected_members:
         roles_to_remove = [team_role]
         for rname in ranking_roles:
@@ -752,30 +760,32 @@ async def disband(interaction: discord.Interaction, team: str, reason: str):
         except discord.Forbidden:
             print(f"❌ Could not modify roles for {member.display_name}")
 
-    # DM FOs and GMs with rate limit handling
-    for member in affected_members:
-        if any(role.name in {"Franchise Owner", "General Manager"} for role in member.roles):
-            try:
-                embed = discord.Embed(
-                    title="📬 UFFL - Team Disbanded",
-                    description=f"Your team **{team}** has been officially disbanded.",
-                    color=discord.Color.red()
-                )
-                embed.add_field(name="Reason", value=reason, inline=False)
-                embed.add_field(name="Disbanded by", value=interaction.user.mention, inline=True)
-                embed.add_field(name="Date", value=timestamp, inline=True)
-                embed.set_footer(text="You are now a Free Agent.")
-                await member.send(embed=embed)
-                await asyncio.sleep(1)  # rate limit protection
-                notified += 1
-            except Exception as e:
-                print(f"❌ Could not DM {member.display_name}: {e}")
+    # DM users that were FO or GM
+    notified = 0
+    for member in users_to_notify:
+        try:
+            embed = discord.Embed(
+                title="📬 UFFL - Team Disbanded",
+                description=f"Your team **{team}** has been officially disbanded.",
+                color=discord.Color.red()
+            )
+            embed.add_field(name="Reason", value=reason, inline=False)
+            embed.add_field(name="Disbanded by", value=interaction.user.mention, inline=True)
+            embed.add_field(name="Date", value=timestamp, inline=True)
+            embed.set_footer(text="You are now a Free Agent.")
+
+            await member.send(embed=embed)
+            await asyncio.sleep(1)  # rate limit protection
+            notified += 1
+        except Exception as e:
+            print(f"❌ Could not DM {member.display_name}: {e}")
 
     await interaction.followup.send(
         f"✅ Team **{team}** has been disbanded. {len(affected_members)} members affected. "
         f"{notified} FO/GM notified by DM.",
         ephemeral=True
     )
+
 
 @disband.autocomplete("team")
 async def disband_team_autocomplete(
