@@ -192,6 +192,7 @@ class FootballFusionBot(commands.Bot):
             self.tree.add_command(gametime, guild=guild)
             self.tree.add_command(give_role, guild=guild)
             self.tree.add_command(submit_score, guild=guild)
+            self.tree.add_command(delete_score, guild=guild)
             self.tree.add_command(team_info, guild=guild)
             self.tree.add_command(debugcheck, guild=guild)
             self.tree.add_command(botcmds, guild=guild)
@@ -988,6 +989,49 @@ async def submit_score(interaction: discord.Interaction, team1: str, score1: int
     await interaction.response.send_message(
         f"✅ Score submitted:\n• {team1}: {score1}\n• {team2}: {score2}\n• Season: {season}", ephemeral=True
     )
+
+@bot.tree.command(name="delete_score", description="Delete a previously submitted score by date.")
+@app_commands.describe(
+    team="The team you are removing the score for",
+    opponent="Opponent team",
+    date="The date of the game (YYYY-MM-DD)",
+    season="Season (e.g. 2025)"
+)
+async def delete_score(interaction: discord.Interaction, team: str, opponent: str, date: str, season: str = "2025"):
+    allowed_roles = {"Founder", "WORKERS"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.response.send_message("❌ You don’t have permission to delete scores.", ephemeral=True)
+        return
+
+    try:
+        with open("uffl_scores.json", "r") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        await interaction.response.send_message("❌ Score data file not found.", ephemeral=True)
+        return
+
+    season_data = data.get(season, {})
+    team_games = season_data.get(team, [])
+
+    new_team_games = [g for g in team_games if not (g["opponent"] == opponent and g["date"] == date)]
+    if len(new_team_games) == len(team_games):
+        await interaction.response.send_message("⚠️ No matching game found for that team, opponent, and date.", ephemeral=True)
+        return
+
+    data[season][team] = new_team_games
+
+    # Remove from opponent as well
+    opponent_games = season_data.get(opponent, [])
+    data[season][opponent] = [g for g in opponent_games if not (g["opponent"] == team and g["date"] == date)]
+
+    with open("uffl_scores.json", "w") as f:
+        json.dump(data, f, indent=4)
+
+    await interaction.response.send_message(
+        f"🗑️ Score deleted: **{team} vs {opponent}** on `{date}` (Season {season})",
+        ephemeral=True
+    )
+
 
 @bot.tree.command(name="team_info", description="View stats for a specific team in a given season.")
 @app_commands.describe(
