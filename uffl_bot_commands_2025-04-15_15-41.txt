@@ -17,7 +17,7 @@ Who can use: Anyone
 Function: Basic test command. Bot responds with “Pong!”
 
 /offer [target]
-Who can use: Franchise Owner
+Who can use: Franchise Owner, General Manager
 Function: Sends a DM to the target with Accept/Decline buttons. Accepting adds team role and removes "Free agents".
 
 /release [target]
