@@ -1218,6 +1218,24 @@ async def on_message(message: discord.Message):
     if message.author.bot:
         return
 
+    # ✅ Automod bypass logic
+    EXCLUDED_USER_IDS = [
+        703001711458910740,
+        1329697045476409372,
+        1361143016726991041,
+        888875111766196255,
+        797306007579656223
+    ]
+
+    EXCLUDED_ROLES = {"Founder", "WORKERS", "UFFL BOT!"}
+
+    if (
+        message.author.id in EXCLUDED_USER_IDS
+        or any(role.name in EXCLUDED_ROLES for role in message.author.roles)
+        or message.author.guild_permissions.manage_messages
+    ):
+        return
+        
     blacklisted_words = [
         "nigga",
         "nigger",
