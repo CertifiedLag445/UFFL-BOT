@@ -155,12 +155,16 @@ class FootballFusionBot(commands.Bot):
         intents.members = True
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
+        self.synced = False  # NEW: Add a flag to prevent premature setup
 
     async def setup_hook(self):
+        if self.synced:  # Prevent syncing before commands are registered
+            return
+        self.synced = True
+
         try:
             print("🧨 Force-wiping ALL GLOBAL AND GUILD COMMANDS...")
 
-            # ✅ This is a regular (non-async) method — DO NOT await it
             self.tree.clear_commands(guild=None)
             await self.tree.sync()
 
@@ -170,7 +174,6 @@ class FootballFusionBot(commands.Bot):
 
             print("✅ All global and guild commands wiped and re-synced.")
 
-            # 🧪 Debug output
             global_cmds = await self.tree.fetch_commands()
             guild_cmds = await self.tree.fetch_commands(guild=guild)
             print("🌐 Global commands:", [cmd.name for cmd in global_cmds])
@@ -178,15 +181,8 @@ class FootballFusionBot(commands.Bot):
 
         except Exception as e:
             print(f"❌ setup_hook error: {e}")
-            raise e  # optional but good for visibility
+            raise e
 
-
-
-
-
-
-
-bot = FootballFusionBot()
 
 
 
@@ -676,6 +672,8 @@ def run():
     app.run(host='0.0.0.0', port=8080)
 
 Thread(target=run).start()
+
+bot = FootballFusionBot()
 
 import os
 bot.run(os.environ["DISCORD_TOKEN"])
