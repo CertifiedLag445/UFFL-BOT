@@ -3,6 +3,8 @@ from discord.ext import commands
 from discord.ui import View, button
 from discord import app_commands  
 import datetime  
+import pytz
+
 
 
 GUILD_ID = 1307397558787899515  # Define GUILD_ID at the top!
@@ -717,7 +719,9 @@ async def disband(interaction: discord.Interaction, team: str, reason: str):
 
     affected_members = team_role.members.copy()
     notified = 0
-    timestamp = datetime.datetime.now().strftime("%B %d, %Y, %I:%M %p %Z")
+    eastern = pytz.timezone("US/Eastern")
+    timestamp = datetime.datetime.now(eastern).strftime("%B %d, %Y, %I:%M %p %Z")
+
 
     for member in affected_members:
         original_roles = [r.name for r in member.roles]
