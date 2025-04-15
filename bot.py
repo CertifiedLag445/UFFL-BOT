@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from discord import app_commands
+from discord import app_commands, Interaction, Embed
 from discord.ui import View, button
 from collections import defaultdict   
 from datetime import timedelta        
@@ -1147,6 +1147,123 @@ async def leaderboard(interaction: discord.Interaction, category: app_commands.C
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
+@bot.tree.command(name="group_create", description="Add up to 4 teams into an existing group (A–D).")
+@app_commands.describe(
+    group="Select which group to add to (A, B, C, or D).",
+    team1="Optional team to add to group",
+    team2="Optional team to add to group",
+    team3="Optional team to add to group",
+    team4="Optional team to add to group"
+)
+@app_commands.choices(group=[
+    app_commands.Choice(name="Group A", value="A"),
+    app_commands.Choice(name="Group B", value="B"),
+    app_commands.Choice(name="Group C", value="C"),
+    app_commands.Choice(name="Group D", value="D")
+])
+async def group_create(interaction: discord.Interaction, group: app_commands.Choice[str],
+    team1: str = None, team2: str = None, team3: str = None, team4: str = None):
+
+    allowed_roles = {"Founder", "WORKERS"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.response.send_message("❌ You don't have permission to update groups.", ephemeral=True)
+        return
+
+    # Filter out None and validate teams
+    new_teams = [t for t in [team1, team2, team3, team4] if t]
+    if not new_teams:
+        await interaction.response.send_message("⚠️ Please provide at least one team to add.", ephemeral=True)
+        return
+
+    if any(t not in TEAM_NAMES for t in new_teams):
+        await interaction.response.send_message("❌ One or more teams are invalid.", ephemeral=True)
+        return
+
+    try:
+        with open("uffl_groups.json", "r") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        data = {"A": [], "B": [], "C": [], "D": []}
+
+    group_key = group.value
+    current = data.get(group_key, [])
+
+    # Add new teams, prevent duplicates
+    for team in new_teams:
+        if team not in current:
+            current.append(team)
+
+    data[group_key] = current
+
+    with open("uffl_groups.json", "w") as f:
+        json.dump(data, f, indent=4)
+
+    await interaction.response.send_message(
+        f"✅ Group {group_key} now contains: {', '.join(data[group_key])}", ephemeral=True
+    )
+
+@bot.tree.command(name="group_reset", description="Reset all groups or a specific group (A–D).")
+@app_commands.describe(
+    target="Select which group to reset or choose ALL to reset everything."
+)
+@app_commands.choices(target=[
+    app_commands.Choice(name="All Groups", value="ALL"),
+    app_commands.Choice(name="Group A", value="A"),
+    app_commands.Choice(name="Group B", value="B"),
+    app_commands.Choice(name="Group C", value="C"),
+    app_commands.Choice(name="Group D", value="D")
+])
+async def group_reset(interaction: discord.Interaction, target: app_commands.Choice[str]):
+    allowed_roles = {"Founder", "WORKERS"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.response.send_message("❌ You don’t have permission to reset groups.", ephemeral=True)
+        return
+
+    try:
+        with open("uffl_groups.json", "r") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        data = {"A": [], "B": [], "C": [], "D": []}
+
+    if target.value == "ALL":
+        for key in ["A", "B", "C", "D"]:
+            data[key] = []
+        msg = "🔄 All groups (A–D) have been reset."
+    else:
+        data[target.value] = []
+        msg = f"🧹 Group {target.value} has been cleared."
+
+    with open("uffl_groups.json", "w") as f:
+        json.dump(data, f, indent=4)
+
+    await interaction.response.send_message(msg, ephemeral=True)
+
+@bot.tree.command(name="group_info", description="View the current teams in all UFFL groups.")
+async def group_info(interaction: discord.Interaction):
+    allowed_roles = {"Founder", "WORKERS"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.response.send_message("❌ You don’t have permission to view group info.", ephemeral=True)
+        return
+
+    try:
+        with open("uffl_groups.json", "r") as f:
+            groups = json.load(f)
+    except FileNotFoundError:
+        groups = {"A": [], "B": [], "C": [], "D": []}
+
+    embed = discord.Embed(
+        title="📘 UFFL Group Info",
+        description="Current team assignments by group.",
+        color=discord.Color.blue()
+    )
+
+    for key in ["A", "B", "C", "D"]:
+        teams = groups.get(key, [])
+        value = "\n".join(f"• {team}" for team in teams) if teams else "_No teams assigned yet_"
+        embed.add_field(name=f"Group {key}", value=value, inline=False)
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
 @bot.tree.command(name="botcmds", description="DMs you a list of all bot commands.")
 async def botcmds(interaction: discord.Interaction):
     try:
@@ -1236,7 +1353,7 @@ async def on_message(message: discord.Message):
         or message.author.guild_permissions.manage_messages
     ):
         return
-        
+
     blacklisted_words = [
         "nigga",
         "nigger",
