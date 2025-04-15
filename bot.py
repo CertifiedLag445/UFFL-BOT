@@ -170,17 +170,39 @@ class FootballFusionBot(commands.Bot):
             self.tree.copy_global_to(guild=guild)
             await self.tree.sync(guild=guild)
 
-            # Debug output
-            print("✅ All global and guild commands wiped and re-synced.")
-            global_cmds = await self.tree.fetch_commands()
-            guild_cmds = await self.tree.fetch_commands(guild=guild)
-            print("🌐 Global commands:", [cmd.name for cmd in global_cmds])
-            print("🏠 Guild commands:", [cmd.name for cmd in guild_cmds])
-        except Exception as e:
-            print(f"❌ setup_hook error: {e}")
-            raise e
+            # ✅ Explicitly register each command to the guild
+        self.tree.add_command(ping, guild=guild)
+        self.tree.add_command(offer, guild=guild)
+        self.tree.add_command(release, guild=guild)
+        self.tree.add_command(demand, guild=guild)
+        self.tree.add_command(promote, guild=guild)
+        self.tree.add_command(demote, guild=guild)
+        self.tree.add_command(roster, guild=guild)
+        self.tree.add_command(deadline_reminder, guild=guild)
+        self.tree.add_command(game_thread, guild=guild)
+
+        # Sync with the guild
+        await self.tree.sync(guild=guild)
+
+        # Debug output
+        print("✅ All global and guild commands wiped and re-synced.")
+        global_cmds = await self.tree.fetch_commands()
+        guild_cmds = await self.tree.fetch_commands(guild=guild)
+        print("🌐 Global commands:", [cmd.name for cmd in global_cmds])
+        print("🏠 Guild commands:", [cmd.name for cmd in guild_cmds])
+
+    except Exception as e:
+        print(f"❌ setup_hook error: {e}")
+        raise e
 # ✅ Moved bot instantiation up so decorators can reference it
 bot = FootballFusionBot()
+
+@bot.tree.command(name="ping")
+async def ping(interaction: discord.Interaction):
+    await interaction.response.send_message("Pong!", ephemeral=True)
+
+print("✅ Ping command loaded")
+
 
 @bot.event
 async def on_application_command_error(interaction, error):
