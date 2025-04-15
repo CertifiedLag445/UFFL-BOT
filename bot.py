@@ -156,6 +156,29 @@ class FootballFusionBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
 
+    async def setup_hook(self):
+        try:
+            print("🧨 Force-wiping ALL GLOBAL AND GUILD COMMANDS...")
+
+            # Clear and re-sync global commands
+            self.tree.clear_commands(guild=None)
+            await self.tree.sync()
+
+            # Clear and re-sync guild commands
+            guild = discord.Object(id=GUILD_ID)
+            self.tree.clear_commands(guild=guild)
+            self.tree.copy_global_to(guild=guild)
+            await self.tree.sync(guild=guild)
+
+            # Debug output
+            print("✅ All global and guild commands wiped and re-synced.")
+            global_cmds = await self.tree.fetch_commands()
+            guild_cmds = await self.tree.fetch_commands(guild=guild)
+            print("🌐 Global commands:", [cmd.name for cmd in global_cmds])
+            print("🏠 Guild commands:", [cmd.name for cmd in guild_cmds])
+        except Exception as e:
+            print(f"❌ setup_hook error: {e}")
+            raise e
 # ✅ Moved bot instantiation up so decorators can reference it
 bot = FootballFusionBot()
 
