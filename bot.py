@@ -180,6 +180,8 @@ class FootballFusionBot(commands.Bot):
             self.tree.add_command(roster, guild=guild)
             self.tree.add_command(deadline_reminder, guild=guild)
             self.tree.add_command(game_thread, guild=guild)
+            self.tree.add_command(disband, guild=guild)
+            self.tree.add_command(debugcheck, guild=guild)
 
             await self.tree.sync(guild=guild)
 
