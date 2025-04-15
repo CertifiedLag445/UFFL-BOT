@@ -1,0 +1,63 @@
+
+UFFL BOT COMMANDS AND ROLE PERMISSIONS
+
+This document outlines all currently active UFFL Bot commands and who is allowed to use them.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GENERAL STRUCTURE
+• All commands are slash commands (e.g. /offer).
+• All commands must be used inside the UFFL Discord server.
+• Some commands auto-DM users; these will not work if the recipient has DMs closed.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/ping
+Who can use: Anyone
+Function: Basic test command. Bot responds with “Pong!”
+
+/offer [target]
+Who can use: Franchise Owner
+Function: Sends a DM to the target with Accept/Decline buttons. Accepting adds team role and removes "Free agents".
+
+/release [target]
+Who can use: Franchise Owner, General Manager
+Function: Removes the team, HC, GM roles from a player and puts them back in "Free agents". Notifies them by DM.
+
+/demand
+Who can use: Anyone except Franchise Owners
+Function: Requests to leave the current team. Prompts the user to confirm. If confirmed, removes team role and adds "Free agents". Notifies FO via DM.
+
+/promote [target] [role]
+Who can use: Franchise Owner
+Function: Promotes a member on their team to HC, GM, or transfers FO role. Transferring FO prompts 2FA-style confirmation.
+
+/demote [target] [role]
+Who can use: Franchise Owner
+Function: Removes HC or GM role from a teammate. Notifies the demoted user via DM.
+
+/roster
+Who can use: WORKERS, Founder, Franchise Owner
+Function: Sends a full roster list by team via DM. Includes FO, GM, HC roles. Displays user IDs.
+
+/deadline_reminder [deadline]
+Who can use: WORKERS, Founder
+Function: Sends all FOs a DM reminder message about the deadline provided.
+
+/game_thread [team1] [team2]
+Who can use: WORKERS, Founder
+Function: Creates a private thread in the current channel and invites FOs, GMs, and HCs from both teams plus staff.
+
+/disband [team] [reason]
+Who can use: WORKERS, Founder
+Function: Fully wipes the selected team. Removes all team and ranking roles from affected members, gives them “Free agents” role. FOs and GMs receive a DM with reason, date, and issuer of the disband.
+
+/gametime [team1] [team2] [time] [server_link]
+Who can use: WORKERS, Founder, Franchise Owner
+Function: Posts a styled announcement to a specific channel showing the teams, FO mentions, EST time, and a hyperlinked private server invite.
+
+/botcmds
+Who can use: Anyone
+Function: DMs the user this document.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
