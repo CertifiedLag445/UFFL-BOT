@@ -628,6 +628,10 @@ async def debugcheck(interaction: discord.Interaction):
 @bot.tree.command(name="game_thread", description="Create a game thread between two teams. Automatically invites FOs, GMs, HCs, and staff.")
 @app_commands.describe(team1="First team", team2="Second team")
 async def game_thread(interaction: discord.Interaction, team1: str, team2: str):
+allowed_roles = {"Founder", "WORKERS"}
+if not any(role.name in allowed_roles for role in interaction.user.roles):
+    await interaction.followup.send("❌ You don't have permission to use this command.", ephemeral=True)
+    return
     await interaction.response.defer(ephemeral=True)
 
     guild = interaction.guild
