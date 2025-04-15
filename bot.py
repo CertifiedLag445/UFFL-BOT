@@ -858,6 +858,8 @@ async def gametime_team2_autocomplete(interaction: discord.Interaction, current:
 
 @bot.tree.command(name="botcmds", description="DMs you a list of all bot commands and how they work.")
 async def botcmds(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)  # Always respond first!
+
     command_guide = """
 /OFFER
 Send a team invite to a free agent.
@@ -977,9 +979,9 @@ Announce a scheduled game to a specific announcement channel (#⏳▕▏𝘎𝘈
 
     try:
         await interaction.user.send(command_guide)
-        await interaction.response.send_message("📬 Command list sent to your DMs.", ephemeral=True)
+        await interaction.followup.send("📬 Command list sent to your DMs.", ephemeral=True)
     except discord.Forbidden:
-        await interaction.response.send_message("❌ Could not send DM. Please make sure your DMs are open.", ephemeral=True)
+        await interaction.followup.send("❌ Could not send DM. Please make sure your DMs are open.", ephemeral=True)
 
 
 from flask import Flask
