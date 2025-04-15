@@ -786,7 +786,6 @@ async def disband(interaction: discord.Interaction, team: str, reason: str):
         ephemeral=True
     )
 
-
 @disband.autocomplete("team")
 async def disband_team_autocomplete(
     interaction: discord.Interaction, current: str
@@ -904,6 +903,7 @@ async def give_role(interaction: discord.Interaction, user: discord.Member, team
         if free_agents_role and free_agents_role in user.roles:
             await user.remove_roles(free_agents_role)
 
+        # DM the new FO (target user)
         try:
             embed = discord.Embed(
                 title="🏈 UFFL - You're a Franchise Owner!",
@@ -915,6 +915,7 @@ async def give_role(interaction: discord.Interaction, user: discord.Member, team
         except discord.Forbidden:
             print(f"❌ Could not DM {user.display_name}")
 
+        # Respond to the command user only once
         await interaction.response.send_message(f"✅ {user.mention} has been made FO of **{team}**.", ephemeral=True)
 
     except discord.Forbidden:
