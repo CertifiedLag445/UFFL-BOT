@@ -8,6 +8,8 @@ import pytz
 
 
 GUILD_ID = 1307397558787899515  # Define GUILD_ID at the top!
+ANNOUNCEMENT_CHANNEL_ID = 1223456789012345678  # 🛠️ Replace with your actual channel ID
+
 
 TEAM_NAMES = [
     "Washington", "Tennessee", "Seattle", "San Francisco", "San Diego",
@@ -183,6 +185,7 @@ class FootballFusionBot(commands.Bot):
             self.tree.add_command(deadline_reminder, guild=guild)
             self.tree.add_command(game_thread, guild=guild)
             self.tree.add_command(disband, guild=guild)
+            self.tree.add_command(gametime, guild=guild)
             self.tree.add_command(debugcheck, guild=guild)
             await self.tree.sync(guild=guild)
 
@@ -773,6 +776,65 @@ async def disband_team_autocomplete(
     ][:25]
 
 
+@bot.tree.command(name="gametime", description="Announce an upcoming UFFL game between two teams.")
+@app_commands.describe(
+    team1="First team",
+    team2="Second team",
+    time_est="Game start time (EST)",
+    server_link="Private server link"
+)
+async def gametime(interaction: discord.Interaction, team1: str, team2: str, time_est: str, server_link: str):
+    await interaction.response.defer(ephemeral=True)
+    guild = interaction.guild
+    channel = guild.get_channel(ANNOUNCEMENT_CHANNEL_ID)
+
+    if not channel:
+        await interaction.followup.send("❌ Could not find the announcement channel.", ephemeral=True)
+        return
+
+    def find_fo(team_name):
+        role = discord.utils.get(guild.roles, name=team_name)
+        fo_role = discord.utils.get(guild.roles, name="Franchise Owner")
+        if not role or not fo_role:
+            return None
+        for member in role.members:
+            if fo_role in member.roles:
+                return member
+        return None
+
+    fo1 = find_fo(team1)
+    fo2 = find_fo(team2)
+
+    if not fo1 or not fo2:
+        await interaction.followup.send("❌ Could not find Franchise Owners for both teams.", ephemeral=True)
+        return
+
+    embed = discord.Embed(
+        title="🏈 UFFL MATCH ANNOUNCEMENT",
+        color=discord.Color.green()
+    )
+    embed.add_field(name="🔹 Teams", value=f"**{team1}** (FO: {fo1.mention}) 🆚 **{team2}** (FO: {fo2.mention})", inline=False)
+    embed.add_field(name="⏰ Kickoff Time", value=f"{time_est} EST", inline=False)
+    embed.add_field(name="🎮 Private Server", value=f"[Join Here!]({server_link})", inline=False)
+    embed.set_footer(text="UFFL Bot • Game Notification")
+
+    await channel.send(embed=embed)
+    await interaction.followup.send("✅ Game announcement sent!", ephemeral=True)
+
+@gametime.autocomplete("team1")
+async def gametime_team1_autocomplete(interaction: discord.Interaction, current: str):
+    return [
+        app_commands.Choice(name=team, value=team)
+        for team in TEAM_NAMES if current.lower() in team.lower()
+    ][:25]
+
+@gametime.autocomplete("team2")
+async def gametime_team2_autocomplete(interaction: discord.Interaction, current: str):
+    return [
+        app_commands.Choice(name=team, value=team)
+        for team in TEAM_NAMES if current.lower() in team.lower()
+    ][:25]
+
 
 from flask import Flask
 from threading import Thread
@@ -792,7 +854,6 @@ Thread(target=run).start()
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
-
 
 
 import os
