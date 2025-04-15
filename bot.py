@@ -191,7 +191,9 @@ async def on_application_command_error(interaction, error):
 @bot.tree.command(name="offer", description="Offer a player to join your team.")
 @app_commands.describe(target="The user to offer a spot on your team.")
 async def offer(interaction: discord.Interaction, target: discord.Member):
+    print("✅ Offer command loaded")  # 🟢 ADD THIS LINE RIGHT HERE
     await interaction.response.defer(ephemeral=True)
+
 
     allowed_roles = {"Franchise Owner", "General Manager"}  # 👈 edit this as needed
     if not any(role.name in allowed_roles for role in interaction.user.roles):
