@@ -1,9 +1,11 @@
 import discord
 from discord.ext import commands
-from discord.ui import View, button
-from discord import app_commands  
-import datetime  
+from discord import app_commands
+import datetime
+import os
 import pytz
+import asyncio  # 👈 Add it here
+
 
 
 
@@ -703,6 +705,8 @@ import datetime
 from discord import app_commands
 import datetime
 
+import asyncio  # Make sure this is at the top of your file with other imports
+
 @bot.tree.command(name="disband", description="Disband a team and notify all affected members.")
 @app_commands.describe(
     team="Select the team to disband.",
@@ -724,16 +728,11 @@ async def disband(interaction: discord.Interaction, team: str, reason: str):
 
     ranking_roles = ["Franchise Owner", "General Manager", "Head Coach"]
     free_agents_role = discord.utils.get(guild.roles, name="Free agents")
-
     affected_members = team_role.members.copy()
+    timestamp = datetime.datetime.now(datetime.timezone.utc).astimezone(datetime.timezone(datetime.timedelta(hours=-5))).strftime("%B %d, %Y, %I:%M %p EST")
     notified = 0
-    eastern = pytz.timezone("US/Eastern")
-    timestamp = datetime.datetime.now(eastern).strftime("%B %d, %Y, %I:%M %p %Z")
-
 
     for member in affected_members:
-        original_roles = [r.name for r in member.roles]
-
         roles_to_remove = [team_role]
         for rname in ranking_roles:
             role = discord.utils.get(guild.roles, name=rname)
@@ -747,7 +746,9 @@ async def disband(interaction: discord.Interaction, team: str, reason: str):
         except discord.Forbidden:
             print(f"❌ Could not modify roles for {member.display_name}")
 
-        if any(r in {"Franchise Owner", "General Manager"} for r in original_roles):
+    # DM FOs and GMs with rate limit handling
+    for member in affected_members:
+        if any(role.name in {"Franchise Owner", "General Manager"} for role in member.roles):
             try:
                 embed = discord.Embed(
                     title="📬 UFFL - Team Disbanded",
@@ -758,11 +759,11 @@ async def disband(interaction: discord.Interaction, team: str, reason: str):
                 embed.add_field(name="Disbanded by", value=interaction.user.mention, inline=True)
                 embed.add_field(name="Date", value=timestamp, inline=True)
                 embed.set_footer(text="You are now a Free Agent.")
-
                 await member.send(embed=embed)
+                await asyncio.sleep(1)  # rate limit protection
                 notified += 1
-            except discord.Forbidden:
-                print(f"❌ Could not DM {member.display_name}")
+            except Exception as e:
+                print(f"❌ Could not DM {member.display_name}: {e}")
 
     await interaction.followup.send(
         f"✅ Team **{team}** has been disbanded. {len(affected_members)} members affected. "
