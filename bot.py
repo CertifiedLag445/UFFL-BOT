@@ -704,25 +704,7 @@ Thread(target=run).start()
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
-    guild = discord.Object(id=GUILD_ID)
 
-    try:
-        # Clear both global and guild commands
-        bot.tree.clear_commands(guild=None)
-        await bot.tree.sync()
-
-        bot.tree.clear_commands(guild=guild)
-        bot.tree.copy_global_to(guild=guild)
-        await bot.tree.sync(guild=guild)
-
-        print("✅ Slash commands synced")
-        global_cmds = await bot.tree.fetch_commands()
-        guild_cmds = await bot.tree.fetch_commands(guild=guild)
-        print("🌐 Global:", [cmd.name for cmd in global_cmds])
-        print("🏠 Guild:", [cmd.name for cmd in guild_cmds])
-
-    except Exception as e:
-        print(f"❌ Error syncing slash commands: {e}")
 
 
 import os
