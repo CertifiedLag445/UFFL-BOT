@@ -1488,7 +1488,7 @@ SPAM_TIME_WINDOW = 15  # seconds
 @bot.event
 async def on_message(message: discord.Message):
     if message.author.bot:
-        if not message.content:
+    if not message.content:
     await bot.process_commands(message)
     return
         return
@@ -1498,8 +1498,7 @@ async def on_message(message: discord.Message):
         1329697045476409372,
         1361143016726991041,
         888875111766196255,
-        797306007579656223,
-        1149468942377681066
+        797306007579656223
     ]
     EXCLUDED_ROLES = {"Founder", "Commissioners", "UFFL BOT!"}
 
