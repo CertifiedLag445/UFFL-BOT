@@ -184,25 +184,54 @@ class FootballFusionBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-        print("🧨 Force-wiping ALL GLOBAL AND GUILD COMMANDS...")
+        try:
+            print("🧨 Force-wiping ALL GLOBAL AND GUILD COMMANDS...")
 
-        # Clear old commands
-        self.tree.clear_commands(guild=None)  # Global
-        self.tree.clear_commands(guild=discord.Object(id=GUILD_ID))  # Guild-specific
+            # Clear and re-sync global commands
+            self.tree.clear_commands(guild=None)
+            await self.tree.sync()
 
-        # Sync everything
-        await bot.tree.sync()
-        await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
+            # Clear and re-sync guild commands
+            guild = discord.Object(id=GUILD_ID)
+            self.tree.clear_commands(guild=guild)
 
+            # ✅ Register each command manually
+            self.tree.add_command(ping, guild=guild)
+            self.tree.add_command(offer, guild=guild)
+            self.tree.add_command(release, guild=guild)
+            self.tree.add_command(demand, guild=guild)
+            self.tree.add_command(promote, guild=guild)
+            self.tree.add_command(demote, guild=guild)
+            self.tree.add_command(roster, guild=guild)
+            self.tree.add_command(deadline_reminder, guild=guild)
+            self.tree.add_command(game_thread, guild=guild)
+            self.tree.add_command(close_thread, guild=guild)
+            self.tree.add_command(disband, guild=guild)
+            self.tree.add_command(gametime, guild=guild)
+            self.tree.add_command(give_role, guild=guild)
+            self.tree.add_command(submit_score, guild=guild)
+            self.tree.add_command(delete_score, guild=guild)
+            self.tree.add_command(team_info, guild=guild)
+            self.tree.add_command(leaderboard, guild=guild)
+            self.tree.add_command(group_create, guild=guild)
+            self.tree.add_command(group_reset, guild=guild)
+            self.tree.add_command(group_info, guild=guild)
+            self.tree.add_command(group_thread, guild=guild)
+            self.tree.add_command(fo_dashboard, guild=guild)
+            self.tree.add_command(debugcheck, guild=guild)
+            self.tree.add_command(botcmds, guild=guild)
+            await self.tree.sync(guild=guild)
 
-        print("✅ Slash commands synced successfully.")
+            # Debug output
+            print("✅ All global and guild commands wiped and re-synced.")
+            global_cmds = await self.tree.fetch_commands()
+            guild_cmds = await self.tree.fetch_commands(guild=guild)
+            print("🌐 Global commands:", [cmd.name for cmd in global_cmds])
+            print("🏠 Guild commands:", [cmd.name for cmd in guild_cmds])
 
-        # Debug output
-        print("✅ All global and guild commands wiped and re-synced.")
-        global_cmds = await self.tree.fetch_commands()
-        guild_cmds = await self.tree.fetch_commands(guild=discord.Object(id=GUILD_ID))
-        print("🌐 Global commands:", [cmd.name for cmd in global_cmds])
-        print("🏠 Guild commands:", [cmd.name for cmd in guild_cmds])
+        except Exception as e:
+            print(f"❌ setup_hook error: {e}")
+            raise e
 
 
 # ✅ Instantiate bot
@@ -600,55 +629,6 @@ async def roster(interaction: discord.Interaction):
         await interaction.followup.send("📬 Sorted roster sent to your DMs.", ephemeral=True)
     except discord.Forbidden:
         await interaction.followup.send("❌ Could not send DM. Please make sure your DMs are open.", ephemeral=True)
-
-@bot.tree.command(name="check_fo", description="View all teams and which ones have a Franchise Owner.")
-async def check_fo(interaction: discord.Interaction):
-    allowed_roles = {"Founder", "Commissioners"}
-    if not any(role.name in allowed_roles for role in interaction.user.roles):
-        await interaction.response.send_message("❌ You don’t have permission to use this command.", ephemeral=True)
-        return
-
-    await interaction.response.defer(ephemeral=True)
-
-    guild = interaction.guild
-    fo_role = discord.utils.get(guild.roles, name="Franchise Owner")
-
-    if not fo_role:
-        await interaction.followup.send("❌ FO role not found.", ephemeral=True)
-        return
-
-    assigned = []
-    missing = []
-
-    for team in TEAM_NAMES:
-        team_role = discord.utils.get(guild.roles, name=team)
-        if not team_role:
-            continue
-
-        fo = next((member for member in fo_role.members if team_role in member.roles), None)
-        if fo:
-            assigned.append((team, fo))
-        else:
-            missing.append(team)
-
-    embed = discord.Embed(
-        title="📋 Franchise Owner Assignment Report",
-        description="Current FO assignments by team.",
-        color=discord.Color.gold()
-    )
-
-    if assigned:
-        assigned_str = "\n".join(f"🏈 **{team}** — {fo.mention}" for team, fo in sorted(assigned))
-        embed.add_field(name="✅ Teams With FO", value=assigned_str, inline=False)
-
-    if missing:
-        missing_str = "\n".join(f"⚠️ **{team}** — `No FO assigned`" for team in sorted(missing))
-        embed.add_field(name="❌ Teams Missing FO", value=missing_str, inline=False)
-
-    embed.set_footer(text="UFFL Bot • FO Checker")
-
-    await interaction.followup.send(embed=embed, ephemeral=True)
-
 
 
 @bot.tree.command(name="deadline_reminder", description="DM all Franchise Owners a deadline reminder.")
