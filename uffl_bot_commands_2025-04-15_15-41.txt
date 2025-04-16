@@ -100,4 +100,8 @@ Function: Displays the current team assignments for all groups (A, B, C, D). The
 /group_thread [group]
 Who can use: Commissioners, Founder
 Function: Creates a private thread for Group A–D. Automatically adds all FO, GM, and HC from each team in the group, plus all users with the Commissioner or Founder role. Posts the thread in the current channel.
+
+/fo_dashboard
+Who can use: Franchise Owners only
+Function: Sends a private DM showing your full team dashboard. Includes roster size, GM and HC info, a full list of players, your team’s season record (Wins/Losses), the last 3 games played, and the other teams in your group. Designed to give FOs a complete overview of team status at a glance.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
