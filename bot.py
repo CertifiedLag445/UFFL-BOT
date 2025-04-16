@@ -1608,7 +1608,7 @@ async def team_dashboard_autocomplete(interaction: discord.Interaction, current:
 user_offense_counts = defaultdict(int)
 message_timestamps = defaultdict(lambda: deque(maxlen=5))  # [timestamp]
 message_contents = defaultdict(lambda: deque(maxlen=5))    # [content strings]
-SPAM_TIME_WINDOW = 15  # seconds
+SPAM_TIME_WINDOW = 5  # seconds
 
 @bot.event
 async def on_message(message: discord.Message):
