@@ -96,4 +96,8 @@ Function: Clears a specific group (A, B, C, or D) or all groups at once. Useful 
 /group_info
 Who can use: Commissioners, Founder
 Function: Displays the current team assignments for all groups (A, B, C, D). The message is only visible to the user who runs the command.
+
+/group_thread [group]
+Who can use: Commissioners, Founder
+Function: Creates a private thread for Group A–D. Automatically adds all FO, GM, and HC from each team in the group, plus all users with the Commissioner or Founder role. Posts the thread in the current channel.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
