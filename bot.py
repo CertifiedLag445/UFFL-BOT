@@ -1648,7 +1648,6 @@ async def on_message(message: discord.Message):
 
     # ✅ Blacklist check
     blacklisted_words = [
-        "nigga", "nigger",
         "join my server", "join my discord", ".gg"
     ]
     contains_blacklisted = any(word in content for word in blacklisted_words) or \
