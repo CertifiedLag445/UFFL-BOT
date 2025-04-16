@@ -60,7 +60,6 @@ Function: Posts a styled announcement to a specific channel showing the teams, F
 Who can use: Anyone
 Function: DMs the user this document.
 
-
 /close_thread
 Who can use: Commissioners, Founder
 Function: Deletes the current private thread if the command is run from inside one. Ensures quick cleanup of game discussion threads.
@@ -70,7 +69,7 @@ Who can use: Commissioners, Founder
 Function: Assigns a user the Franchise Owner role and a team role. Only available team roles (not currently assigned to any member) are shown as options. After the role is assigned, the user receives a DM informing them of their FO status and team.
 
 /submit_score [team1] [score1] [team2] [score2] [season]
-Who can use: Commissioners, Founder
+Who can use: Commissioners, Founder, Franchice Owner
 Function: Logs the final result of a UFFL match between two teams. Adds the result to team stat history for that season.
 
 /delete_score [team] [opponent] [date] [season]
