@@ -1355,7 +1355,7 @@ async def group_thread(interaction: discord.Interaction, group: app_commands.Cho
     try:
         thread = await channel.create_thread(
             name=f"Group {group_key} Thread",
-            type=discord.ChannelType.private_thread,
+            type=discord.ChannelType.public_thread,
             auto_archive_duration=1440,
             invitable=False  # prevents unwanted invites, optional
         )
@@ -1366,13 +1366,6 @@ async def group_thread(interaction: discord.Interaction, group: app_commands.Cho
             except Exception as e:
                 print(f"❌ Failed to add {user.display_name} to thread: {e}")
 
-            try:
-                overwrite = thread.overwrites_for(user)
-                overwrite.send_messages_in_threads = True
-                await thread.edit(overwrites={user: overwrite})
-            except Exception as e:
-                print(f"❌ Failed to grant typing permission to {user.display_name}: {e}")
-
 
         await thread.send(f"📣 Welcome to the thread for **Group {group_key}**!")
         await interaction.response.send_message(
@@ -1380,7 +1373,7 @@ async def group_thread(interaction: discord.Interaction, group: app_commands.Cho
             ephemeral=True
         )
     except Exception as e:
-        await interaction.response.send_message(f"❌ Failed to create thread: `{e}`", ephemeral=True)
+        await interaction.followup.send(f"❌ Failed to create thread: `{e}`", ephemeral=True)
 
 @bot.tree.command(name="fo_dashboard", description="FO dashboard: roster, recent games, record, and groupmates (sent via DM).")
 async def fo_dashboard(interaction: discord.Interaction):
