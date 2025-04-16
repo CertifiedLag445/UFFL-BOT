@@ -1336,6 +1336,76 @@ async def group_thread(interaction: discord.Interaction, group: app_commands.Cho
     except Exception as e:
         await interaction.response.send_message(f"❌ Failed to create thread: `{e}`", ephemeral=True)
 
+@bot.tree.command(name="fo_dashboard", description="FO dashboard: roster, recent games, and groupmates (sent via DM).")
+async def fo_dashboard(interaction: discord.Interaction):
+    if "Franchise Owner" not in [role.name for role in interaction.user.roles]:
+        await interaction.response.send_message("❌ This command is only available to Franchise Owners.", ephemeral=True)
+        return
+
+    guild = interaction.guild
+    team_name = get_user_team(interaction.user)
+    if not team_name:
+        await interaction.response.send_message("❌ Could not determine your team role.", ephemeral=True)
+        return
+
+    team_role = discord.utils.get(guild.roles, name=team_name)
+    gm_role = discord.utils.get(guild.roles, name="General Manager")
+    hc_role = discord.utils.get(guild.roles, name="Head Coach")
+
+    roster = team_role.members if team_role else []
+    gm = [m.display_name for m in roster if gm_role in m.roles]
+    hc = [m.display_name for m in roster if hc_role in m.roles]
+    players = [
+        f"{m.display_name} {'(GM)' if gm_role in m.roles else ''} {'(HC)' if hc_role in m.roles else ''}".strip()
+        for m in roster if m != interaction.user
+    ]
+
+    # Load recent games
+    recent_games = []
+    try:
+        with open("uffl_scores.json", "r") as f:
+            data = json.load(f)
+        season_games = data.get("2025", {}).get(team_name, [])
+        sorted_games = sorted(season_games, key=lambda g: g["date"], reverse=True)
+        for g in sorted_games[:3]:
+            result = "W" if g["team_score"] > g["opponent_score"] else "L"
+            line = f"{g['date']}: {result} vs {g['opponent']} ({g['team_score']}-{g['opponent_score']})"
+            recent_games.append(line)
+    except Exception:
+        recent_games = ["No recent games logged."]
+
+    # Load groupmates
+    groupmates = []
+    try:
+        with open("uffl_groups.json", "r") as f:
+            groups = json.load(f)
+        for group_label, teams in groups.items():
+            if team_name in teams:
+                groupmates = [t for t in teams if t != team_name]
+                break
+    except Exception:
+        groupmates = []
+
+    embed = discord.Embed(
+        title=f"📊 FO Dashboard — {team_name}",
+        color=discord.Color.orange()
+    )
+    embed.add_field(name="Franchise Owner", value=interaction.user.display_name, inline=False)
+    embed.add_field(name="General Manager", value=", ".join(gm) or "_None_", inline=True)
+    embed.add_field(name="Head Coach", value=", ".join(hc) or "_None_", inline=True)
+    embed.add_field(name="Roster Size", value=f"{len(roster)} players", inline=True)
+    embed.add_field(name="Full Roster", value="\n".join(players) or "_No other players_", inline=False)
+    embed.add_field(name="Last 3 Games", value="\n".join(recent_games), inline=False)
+    embed.add_field(name="Teams in Your Group", value="\n".join(groupmates) or "_Not assigned to a group_", inline=False)
+    embed.set_footer(text="UFFL Bot • FO Utility")
+
+    try:
+        await interaction.user.send(embed=embed)
+        await interaction.response.send_message("📬 Dashboard sent to your DMs.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ Could not send DM. Please make sure your DMs are open.", ephemeral=True)
+
+
 
 @bot.tree.command(name="botcmds", description="DMs you a list of all bot commands.")
 async def botcmds(interaction: discord.Interaction):
