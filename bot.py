@@ -1,4 +1,4 @@
-import os
+dimport os
 import json
 import time
 import datetime
@@ -995,7 +995,7 @@ async def give_role_team_autocomplete(
     season="Enter the season (e.g. 2025)"
 )
 async def submit_score(interaction: discord.Interaction, team1: str, score1: int, team2: str, score2: int, season: str = "2025"):
-    allowed_roles = {"Founder", "Commissioners"}
+    allowed_roles = {"Founder", "Commissioners", "Franchise Owner"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("❌ You don’t have permission to submit scores.", ephemeral=True)
         return
