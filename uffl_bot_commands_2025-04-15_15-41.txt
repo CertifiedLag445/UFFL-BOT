@@ -37,23 +37,23 @@ Who can use: Franchise Owner
 Function: Removes HC or GM role from a teammate. Notifies the demoted user via DM.
 
 /roster
-Who can use: WORKERS, Founder, Franchise Owner
+Who can use: Commissioners, Founder, Franchise Owner
 Function: Sends a full roster list by team via DM. Includes FO, GM, HC roles. Displays user IDs.
 
 /deadline_reminder [deadline]
-Who can use: WORKERS, Founder
+Who can use: Commissioners, Founder
 Function: Sends all FOs a DM reminder message about the deadline provided.
 
 /game_thread [team1] [team2]
-Who can use: WORKERS, Founder
+Who can use: Commissioners, Founder
 Function: Creates a private thread in the current channel and invites FOs, GMs, and HCs from both teams plus staff.
 
 /disband [team] [reason]
-Who can use: WORKERS, Founder
+Who can use: Commissioners, Founder
 Function: Fully wipes the selected team. Removes all team and ranking roles from affected members, gives them “Free agents” role. FOs and GMs receive a DM with reason, date, and issuer of the disband.
 
 /gametime [team1] [team2] [time] [server_link]
-Who can use: WORKERS, Founder, Franchise Owner
+Who can use: Commissioners, Founder, Franchise Owner
 Function: Posts a styled announcement to a specific channel showing the teams, FO mentions, EST time, and a hyperlinked private server invite.
 
 /botcmds
@@ -62,19 +62,19 @@ Function: DMs the user this document.
 
 
 /close_thread
-Who can use: WORKERS, Founder
+Who can use: Commissioners, Founder
 Function: Deletes the current private thread if the command is run from inside one. Ensures quick cleanup of game discussion threads.
 
 /give_role [user]
-Who can use: WORKERS, Founder
+Who can use: Commissioners, Founder
 Function: Assigns a user the Franchise Owner role and a team role. Only available team roles (not currently assigned to any member) are shown as options. After the role is assigned, the user receives a DM informing them of their FO status and team.
 
 /submit_score [team1] [score1] [team2] [score2] [season]
-Who can use: WORKERS, Founder
+Who can use: Commissioners, Founder
 Function: Logs the final result of a UFFL match between two teams. Adds the result to team stat history for that season.
 
 /delete_score [team] [opponent] [date] [season]
-Who can use: WORKERS, Founder
+Who can use: Commissioners, Founder
 Function: Deletes a previously submitted match result from both teams’ history. Use this if a score was entered incorrectly. Must match exact date and opponent.
 
 /team_info [team] [season]
@@ -84,4 +84,16 @@ Function: Displays current W/L record, average score, point differential, and ot
 /leaderboard [category] [season]
 Who can use: Anyone
 Function: Displays a top 5 leaderboard sorted by the selected stat category for a given season. Options include Total Points, Average Points, Point Differential, and more. Output is private to the user.
+
+/group_create [group] [team1] [team2] [team3] [team4]
+Who can use: Commissioners, Founder
+Function: Adds up to 4 teams to the selected group (A, B, C, or D). You can run this multiple times to add more teams later. Teams must be from the official league list. Duplicate entries in the same group are ignored. Partial inputs are allowed — all 4 team fields are optional.
+
+/group_reset [target]
+Who can use: Commissioners, Founder
+Function: Clears a specific group (A, B, C, or D) or all groups at once. Useful for resetting after a new season.
+
+/group_info
+Who can use: Commissioners, Founder
+Function: Displays the current team assignments for all groups (A, B, C, D). The message is only visible to the user who runs the command.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
