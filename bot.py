@@ -517,7 +517,7 @@ async def demote(interaction: discord.Interaction, target: discord.Member, role:
 
 @bot.tree.command(name="roster", description="View a full list of Franchise Owners and their team rosters.")
 async def roster(interaction: discord.Interaction):
-    allowed_roles = {"WORKERS", "Founder", "Franchise Owner"}
+    allowed_roles = {"Commissioners", "Founder", "Franchise Owner"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("You are not authorized to use this command.", ephemeral=True)
         return
@@ -597,7 +597,7 @@ async def roster(interaction: discord.Interaction):
 @bot.tree.command(name="deadline_reminder", description="DM all Franchise Owners a deadline reminder.")
 @app_commands.describe(deadline="Enter the deadline (e.g. April 20th at 11:59PM EST)")
 async def deadline_reminder(interaction: discord.Interaction, deadline: str):
-    allowed_roles = {"Founder", "WORKERS"}
+    allowed_roles = {"Founder", "Commissioners"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("You are not permitted to send deadline reminders.", ephemeral=True)
         return
@@ -641,7 +641,7 @@ async def debugcheck(interaction: discord.Interaction):
 @bot.tree.command(name="game_thread", description="Create a game thread between two teams. Automatically invites FOs, GMs, HCs, and staff.")
 @app_commands.describe(team1="First team", team2="Second team")
 async def game_thread(interaction: discord.Interaction, team1: str, team2: str):
-    allowed_roles = {"Founder", "WORKERS"}
+    allowed_roles = {"Founder", "Commissioners"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.followup.send("❌ You don't have permission to use this command.", ephemeral=True)
         return
@@ -657,7 +657,7 @@ async def game_thread(interaction: discord.Interaction, team1: str, team2: str):
         return
 
     ranking_roles = {"Franchise Owner", "General Manager", "Head Coach"}
-    staff_roles = {"Founder", "WORKERS"}
+    staff_roles = {"Founder", "Commissioners"}
 
     invited = set()
 
@@ -711,7 +711,7 @@ async def team2_autocomplete(
 
 @bot.tree.command(name="close_thread", description="Delete the current thread. For use in UFFL game threads.")
 async def close_thread(interaction: discord.Interaction):
-    allowed_roles = {"Founder", "WORKERS"}
+    allowed_roles = {"Founder", "Commissioners"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("❌ You don’t have permission to close threads.", ephemeral=True)
         return
@@ -731,7 +731,7 @@ async def close_thread(interaction: discord.Interaction):
     reason="Explain the reason for disbanding the team."
 )
 async def disband(interaction: discord.Interaction, team: str, reason: str):
-    allowed_roles = {"Founder", "WORKERS"}
+    allowed_roles = {"Founder", "Commissioners"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
         return
@@ -817,7 +817,7 @@ async def disband_team_autocomplete(
     private_server_link="Link to the private server"
 )
 async def gametime(interaction: discord.Interaction, team1: str, team2: str, time_est: str, private_server_link: str):
-    allowed_roles = {"Franchise Owner", "Founder", "WORKERS"}
+    allowed_roles = {"Franchise Owner", "Founder", "Commissioners"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("❌ You don't have permission to use this command.", ephemeral=True)
         return
@@ -890,7 +890,7 @@ async def gametime_team2_autocomplete(interaction: discord.Interaction, current:
     team="Select the team to assign."
 )
 async def give_role(interaction: discord.Interaction, user: discord.Member, team: str):
-    allowed_roles = {"Founder", "WORKERS"}
+    allowed_roles = {"Founder", "Commissioners"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
         return
@@ -957,7 +957,7 @@ async def give_role_team_autocomplete(
     season="Enter the season (e.g. 2025)"
 )
 async def submit_score(interaction: discord.Interaction, team1: str, score1: int, team2: str, score2: int, season: str = "2025"):
-    allowed_roles = {"Founder", "WORKERS"}
+    allowed_roles = {"Founder", "Commissioners"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("❌ You don’t have permission to submit scores.", ephemeral=True)
         return
@@ -1007,7 +1007,7 @@ async def submit_score(interaction: discord.Interaction, team1: str, score1: int
     season="Season (e.g. 2025)"
 )
 async def delete_score(interaction: discord.Interaction, team: str, opponent: str, date: str, season: str = "2025"):
-    allowed_roles = {"Founder", "WORKERS"}
+    allowed_roles = {"Founder", "Commissioners"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("❌ You don’t have permission to delete scores.", ephemeral=True)
         return
@@ -1167,7 +1167,7 @@ async def leaderboard(interaction: discord.Interaction, category: app_commands.C
 async def group_create(interaction: discord.Interaction, group: app_commands.Choice[str],
     team1: str = None, team2: str = None, team3: str = None, team4: str = None):
 
-    allowed_roles = {"Founder", "WORKERS"}
+    allowed_roles = {"Founder", "Commissioners"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("❌ You don't have permission to update groups.", ephemeral=True)
         return
@@ -1217,7 +1217,7 @@ async def group_create(interaction: discord.Interaction, group: app_commands.Cho
     app_commands.Choice(name="Group D", value="D")
 ])
 async def group_reset(interaction: discord.Interaction, target: app_commands.Choice[str]):
-    allowed_roles = {"Founder", "WORKERS"}
+    allowed_roles = {"Founder", "Commissioners"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("❌ You don’t have permission to reset groups.", ephemeral=True)
         return
@@ -1243,7 +1243,7 @@ async def group_reset(interaction: discord.Interaction, target: app_commands.Cho
 
 @bot.tree.command(name="group_info", description="View the current teams in all UFFL groups.")
 async def group_info(interaction: discord.Interaction):
-    allowed_roles = {"Founder", "WORKERS"}
+    allowed_roles = {"Founder", "Commissioners"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("❌ You don’t have permission to view group info.", ephemeral=True)
         return
@@ -1348,7 +1348,7 @@ async def on_message(message: discord.Message):
         1149468942377681066
     ]
 
-    EXCLUDED_ROLES = {"Founder", "WORKERS", "UFFL BOT!"}
+    EXCLUDED_ROLES = {"Founder", "Commissioners", "UFFL BOT!"}
 
     if (
         message.author.id in EXCLUDED_USER_IDS
@@ -1414,6 +1414,32 @@ async def on_message(message: discord.Message):
 
     await bot.process_commands(message)
 
+@group_create.autocomplete("team1")
+@group_create.autocomplete("team2")
+@group_create.autocomplete("team3")
+@group_create.autocomplete("team4")
+async def group_create_team_autocomplete(interaction: discord.Interaction, current: str):
+    guild = interaction.guild
+    if not guild:
+        return []
+
+    fo_role = discord.utils.get(guild.roles, name="Franchise Owner")
+    if not fo_role:
+        return []
+
+    # Collect all team roles currently assigned to a user with FO role
+    teams_with_fo = set()
+    for member in fo_role.members:
+        for role in member.roles:
+            if role.name in TEAM_NAMES:
+                teams_with_fo.add(role.name)
+
+    # Filter by current text
+    return [
+        app_commands.Choice(name=team, value=team)
+        for team in sorted(teams_with_fo)
+        if current.lower() in team.lower()
+    ][:25]
 
 
 import os
