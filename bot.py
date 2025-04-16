@@ -1277,22 +1277,24 @@ async def group_info(interaction: discord.Interaction):
     app_commands.Choice(name="Group D", value="D")
 ])
 async def group_thread(interaction: discord.Interaction, group: app_commands.Choice[str]):
+    await interaction.response.defer(ephemeral=True)
+
     allowed_roles = {"Founder", "Commissioners"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
-        await interaction.response.send_message("❌ You don't have permission to use this command.", ephemeral=True)
+        await interaction.followup.send("❌ You don't have permission to use this command.", ephemeral=True)
         return
 
     try:
         with open("uffl_groups.json", "r") as f:
             groups = json.load(f)
     except FileNotFoundError:
-        await interaction.response.send_message("❌ Group data file not found.", ephemeral=True)
+        await interaction.followup.send("❌ Group data file not found.", ephemeral=True)
         return
 
     group_key = group.value
     group_teams = groups.get(group_key, [])
     if not group_teams:
-        await interaction.response.send_message(f"❌ No teams found in Group {group_key}.", ephemeral=True)
+        await interaction.followup.send(f"❌ No teams found in Group {group_key}.", ephemeral=True)
         return
 
     guild = interaction.guild
