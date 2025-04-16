@@ -1488,10 +1488,12 @@ SPAM_TIME_WINDOW = 15  # seconds
 @bot.event
 async def on_message(message: discord.Message):
     if message.author.bot:
-    if not message.content:
-    await bot.process_commands(message)
-    return
         return
+
+    if not message.content:
+        await bot.process_commands(message)
+        return
+
 
     EXCLUDED_USER_IDS = [
         703001711458910740,
