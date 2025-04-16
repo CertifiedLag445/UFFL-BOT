@@ -105,6 +105,15 @@ class OfferView(View):
                 f"You have accepted the offer and joined **{self.team_name}**!",
                 ephemeral=True
             )
+
+            # Notify the coach who made the offer
+            embed = discord.Embed(
+                title="🏈 UFFL - Offer Accepted",
+                description=f"{member.display_name} has accepted your offer to join **{self.team_name}**.",
+                color=discord.Color.green()
+            )
+            await self.coach.send(embed=embed)
+
         except Exception as e:
             await interaction.followup.send(f"❌ Something went wrong: `{e}`", ephemeral=True)
         self.stop()
@@ -134,30 +143,33 @@ class DemandConfirmView(View):
         if free_agents_role:
             await member.add_roles(free_agents_role)
 
-        fo = None
+        # Notify FO and GM
         fo_role = discord.utils.get(guild.roles, name="Franchise Owner")
-        if fo_role and team_role:
-            for m in fo_role.members:
-                if team_role in m.roles:
-                    fo = m
-                    break
+        gm_role = discord.utils.get(guild.roles, name="General Manager")
 
-        if fo:
+        fgm = []
+        if fo_role:
+            fgm += [m for m in fo_role.members if team_role in m.roles]
+        if gm_role:
+            fgm += [m for m in gm_role.members if team_role in m.roles]
+
+        embed = discord.Embed(
+            title="UFFL - Demand Alert",
+            description=f"{member.mention} has demanded a release from **{self.team_name}**.",
+            color=discord.Color.orange()
+        )
+        for person in fgm:
             try:
-                embed = discord.Embed(
-                    title="UFFL - Demand Alert",
-                    description=f"{member.mention} has demanded a release from **{self.team_name}**.",
-                    color=discord.Color.orange()
-                )
-                await fo.send(embed=embed)
+                await person.send(embed=embed)
             except discord.Forbidden:
-                print(f"Could not DM FO {fo.display_name}")
+                print(f"❌ Could not DM {person.display_name}")
 
         await interaction.followup.send(
             f"You have officially demanded from **{self.team_name}**. You're now a free agent.",
             ephemeral=True
         )
         self.stop()
+
 
     @button(label="Cancel", style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -303,6 +315,7 @@ async def release(interaction: discord.Interaction, target: discord.Member):
     gm_role = discord.utils.get(guild.roles, name="General Manager")
     hc_role = discord.utils.get(guild.roles, name="Head Coach")
 
+    # Make sure the target is actually on your team
     if team_role not in target.roles:
         await interaction.response.send_message(
             f"{target.display_name} is not on your team.",
@@ -310,6 +323,7 @@ async def release(interaction: discord.Interaction, target: discord.Member):
         )
         return
 
+    # Remove team role and any GM/HC titles
     try:
         await target.remove_roles(team_role)
         if gm_role and gm_role in target.roles:
@@ -325,28 +339,48 @@ async def release(interaction: discord.Interaction, target: discord.Member):
         )
         return
 
-    embed = discord.Embed(
-        title="UFFL - Release Notice",
-        description="You have been released from your team.",
-        color=discord.Color.red()
-    )
-    embed.add_field(name="Team:", value=team_name, inline=True)
-    embed.add_field(name="Coach:", value=interaction.user.mention, inline=True)
-    embed.set_footer(text="Thank you for your time. You are now a free agent.")
-
+    # DM the player who was released
     try:
-        await target.send(embed=embed)
-        print(f"✅ Sent release DM to {target.display_name}")
+        player_embed = discord.Embed(
+            title="UFFL - Release Notice",
+            description="You have been released from your team.",
+            color=discord.Color.red()
+        )
+        player_embed.add_field(name="Team:", value=team_name, inline=True)
+        player_embed.add_field(name="Coach:", value=interaction.user.mention, inline=True)
+        player_embed.set_footer(text="You are now a Free Agent. Best of luck!")
+        await target.send(embed=player_embed)
     except discord.Forbidden:
-        print(f"❌ Could not DM {target.display_name} — DMs may be closed.")
-    except Exception as e:
-        print(f"❌ DM send failed for {target.display_name}: {e}")
+        print(f"❌ Could not DM {target.display_name}")
 
+    # DM all FO and GM on the team (except the user who ran the command)
+    notify_roles = ["Franchise Owner", "General Manager"]
+    notified = set()
+
+    for role_name in notify_roles:
+        role = discord.utils.get(guild.roles, name=role_name)
+        if role:
+            for member in role.members:
+                if member == interaction.user:
+                    continue  # skip sender
+                if team_role in member.roles and member.id not in notified:
+                    try:
+                        alert_embed = discord.Embed(
+                            title="🏈 UFFL - Player Released",
+                            description=f"{target.display_name} has been released from **{team_name}**.",
+                            color=discord.Color.red()
+                        )
+                        alert_embed.set_footer(text=f"Released by: {interaction.user.display_name}")
+                        await member.send(embed=alert_embed)
+                        notified.add(member.id)
+                    except discord.Forbidden:
+                        print(f"❌ Could not DM {member.display_name}")
+
+    # Confirm success in chat
     await interaction.response.send_message(
         f"{target.display_name} has been released from **{team_name}**.",
         ephemeral=True
     )
-
 
 @bot.tree.command(name="demand", description="Request to leave your current team.")
 async def demand(interaction: discord.Interaction):
