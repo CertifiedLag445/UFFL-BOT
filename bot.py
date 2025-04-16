@@ -1356,7 +1356,8 @@ async def group_thread(interaction: discord.Interaction, group: app_commands.Cho
         thread = await channel.create_thread(
             name=f"Group {group_key} Thread",
             type=discord.ChannelType.private_thread,
-            auto_archive_duration=1440
+            auto_archive_duration=1440,
+            invitable=False  # prevents unwanted invites, optional
         )
 
         for user in invited:
@@ -1364,6 +1365,14 @@ async def group_thread(interaction: discord.Interaction, group: app_commands.Cho
                 await thread.add_user(user)
             except Exception as e:
                 print(f"❌ Failed to add {user.display_name} to thread: {e}")
+
+            try:
+                overwrite = thread.overwrites_for(user)
+                overwrite.send_messages_in_threads = True
+                await thread.edit(overwrites={user: overwrite})
+            except Exception as e:
+                print(f"❌ Failed to grant typing permission to {user.display_name}: {e}")
+
 
         await thread.send(f"📣 Welcome to the thread for **Group {group_key}**!")
         await interaction.response.send_message(
@@ -1606,9 +1615,9 @@ async def team_dashboard_autocomplete(interaction: discord.Interaction, current:
 
 
 user_offense_counts = defaultdict(int)
-message_timestamps = defaultdict(lambda: deque(maxlen=5))  # [timestamp]
-message_contents = defaultdict(lambda: deque(maxlen=5))    # [content strings]
-SPAM_TIME_WINDOW = 5  # seconds
+message_timestamps = defaultdict(lambda: deque(maxlen=5)) 
+message_contents = defaultdict(lambda: deque(maxlen=5))   
+SPAM_TIME_WINDOW = 5
 
 @bot.event
 async def on_message(message: discord.Message):
