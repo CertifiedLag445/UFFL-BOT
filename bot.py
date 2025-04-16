@@ -191,8 +191,9 @@ class FootballFusionBot(commands.Bot):
         self.tree.clear_commands(guild=discord.Object(id=GUILD_ID))  # Guild-specific
 
         # Sync everything
-        await self.tree.sync()  # Global
-        await self.tree.sync(guild=discord.Object(id=GUILD_ID))  # Guild
+        await bot.tree.sync()
+        await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
+
 
         print("✅ Slash commands synced successfully.")
 
