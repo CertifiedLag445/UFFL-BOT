@@ -203,6 +203,7 @@ class FootballFusionBot(commands.Bot):
             self.tree.add_command(group_create, guild=guild)
             self.tree.add_command(group_reset, guild=guild)
             self.tree.add_command(group_info, guild=guild)
+            self.tree.add_command(group_thread, guild=guild)
             self.tree.add_command(debugcheck, guild=guild)
             self.tree.add_command(botcmds, guild=guild)
             await self.tree.sync(guild=guild)
@@ -1266,6 +1267,73 @@ async def group_info(interaction: discord.Interaction):
         embed.add_field(name=f"Group {key}", value=value, inline=False)
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="group_thread", description="Create a private thread for a group (A–D) with all team staff.")
+@app_commands.describe(group="Choose the group to create a thread for.")
+@app_commands.choices(group=[
+    app_commands.Choice(name="Group A", value="A"),
+    app_commands.Choice(name="Group B", value="B"),
+    app_commands.Choice(name="Group C", value="C"),
+    app_commands.Choice(name="Group D", value="D")
+])
+async def group_thread(interaction: discord.Interaction, group: app_commands.Choice[str]):
+    allowed_roles = {"Founder", "Commissioners"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.response.send_message("❌ You don't have permission to use this command.", ephemeral=True)
+        return
+
+    try:
+        with open("uffl_groups.json", "r") as f:
+            groups = json.load(f)
+    except FileNotFoundError:
+        await interaction.response.send_message("❌ Group data file not found.", ephemeral=True)
+        return
+
+    group_key = group.value
+    group_teams = groups.get(group_key, [])
+    if not group_teams:
+        await interaction.response.send_message(f"❌ No teams found in Group {group_key}.", ephemeral=True)
+        return
+
+    guild = interaction.guild
+    channel = interaction.channel
+
+    invited = set()
+
+    team_roles = [discord.utils.get(guild.roles, name=team) for team in group_teams]
+    staff_roles = {"Franchise Owner", "General Manager", "Head Coach", "Founder", "Commissioners"}
+
+    for member in guild.members:
+        user_roles = {r.name for r in member.roles}
+
+        on_team = any(role.name in user_roles for role in team_roles if role)
+        is_ranked = user_roles & {"Franchise Owner", "General Manager", "Head Coach"}
+        is_staff = user_roles & {"Founder", "Commissioners"}
+
+        if (on_team and is_ranked) or is_staff:
+            invited.add(member)
+
+    try:
+        thread = await channel.create_thread(
+            name=f"Group {group_key} Thread",
+            type=discord.ChannelType.private_thread,
+            auto_archive_duration=1440
+        )
+
+        for user in invited:
+            try:
+                await thread.add_user(user)
+            except Exception as e:
+                print(f"❌ Failed to add {user.display_name} to thread: {e}")
+
+        await thread.send(f"📣 Welcome to the thread for **Group {group_key}**!")
+        await interaction.response.send_message(
+            f"✅ Group {group_key} thread created. {len(invited)} users invited.",
+            ephemeral=True
+        )
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Failed to create thread: `{e}`", ephemeral=True)
+
 
 @bot.tree.command(name="botcmds", description="DMs you a list of all bot commands.")
 async def botcmds(interaction: discord.Interaction):
