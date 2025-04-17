@@ -747,6 +747,32 @@ async def team2_autocomplete(
         if current.lower() in team.lower()
     ][:25]
 
+@bot.tree.command(name="add_to_thread", description="Add a user to the current private thread.")
+@app_commands.describe(user="The user to add to this thread")
+async def add_to_thread(interaction: discord.Interaction, user: discord.Member):
+    allowed_roles = {"Founder", "Commissioners", "Franchise Owner"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.response.send_message("❌ You don’t have permission to use this command.", ephemeral=True)
+        return
+
+    if not isinstance(interaction.channel, discord.Thread):
+        await interaction.response.send_message("⚠️ This command must be used inside a thread.", ephemeral=True)
+        return
+
+    thread: discord.Thread = interaction.channel
+
+    if thread.type != discord.ChannelType.private_thread:
+        await interaction.response.send_message("⚠️ This thread is not private. No need to manually add users.", ephemeral=True)
+        return
+
+    try:
+        await thread.add_user(user)
+        await interaction.response.send_message(f"✅ {user.mention} has been added to this thread.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I don’t have permission to add that user.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Failed to add user: `{e}`", ephemeral=True)
+
 @bot.tree.command(name="close_thread", description="Delete the current thread. For use in UFFL game threads.")
 async def close_thread(interaction: discord.Interaction):
     allowed_roles = {"Founder", "Commissioners"}
@@ -1355,7 +1381,7 @@ async def group_thread(interaction: discord.Interaction, group: app_commands.Cho
     try:
         thread = await channel.create_thread(
             name=f"Group {group_key} Thread",
-            type=discord.ChannelType.public_thread,
+            type=discord.ChannelType.private_thread,
             auto_archive_duration=1440,
             invitable=False  # prevents unwanted invites, optional
         )
