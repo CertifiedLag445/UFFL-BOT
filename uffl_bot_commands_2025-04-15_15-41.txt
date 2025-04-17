@@ -48,6 +48,10 @@ Function: Sends all FOs a DM reminder message about the deadline provided.
 Who can use: Commissioners, Founder
 Function: Creates a private thread in the current channel and invites FOs, GMs, and HCs from both teams plus staff.
 
+/add_to_thread [user]
+Who can use: Commissioners, Founder
+Function: Adds the selected user to the current private thread. Must be run from inside a thread. Useful for granting access to newly promoted GMs or HCs who weren’t on the team when the thread was created.
+
 /disband [team] [reason]
 Who can use: Commissioners, Founder
 Function: Fully wipes the selected team. Removes all team and ranking roles from affected members, gives them “Free agents” role. FOs and GMs receive a DM with reason, date, and issuer of the disband.
@@ -103,4 +107,8 @@ Function: Creates a private thread for Group A–D. Automatically adds all FO, G
 /fo_dashboard
 Who can use: Franchise Owners only
 Function: Sends a private DM showing your full team dashboard. Includes roster size, GM and HC info, a full list of players, your team’s season record (Wins/Losses), the last 3 games played, and the other teams in your group. Designed to give FOs a complete overview of team status at a glance.
+
+/team_dashboard [team]
+Who can use: Commissioners, Founder
+Function: Sends a detailed dashboard about the selected team via DM. Includes roster, GM and HC info, season record (Wins/Losses), last 3 games, and other teams in their group. Designed for league staff to view any team’s current status at a glance.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
