@@ -77,7 +77,7 @@ async def alert_fo_of_gm_action(guild: discord.Guild, acting_member: discord.Mem
 
 
 class OfferView(View):
-    def __init__(self, coach: discord.Member, team_name: str, guild: discord.Guild, *, timeout=180):
+    def __init__(self, coach: discord.Member, team_name: str, guild: discord.Guild, *, timeout=86400):  # 24 hours
         super().__init__(timeout=timeout)
         self.coach = coach
         self.team_name = team_name
@@ -86,36 +86,32 @@ class OfferView(View):
     @button(label="Accept", style=discord.ButtonStyle.success)
     async def accept_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
-        try:
-            guild = self.guild
-            member = guild.get_member(interaction.user.id) or await guild.fetch_member(interaction.user.id)
-            if not member:
-                await interaction.followup.send("❌ Could not find you in the server.", ephemeral=True)
-                return
 
-            team_role = discord.utils.get(guild.roles, name=self.team_name)
-            free_agents_role = discord.utils.get(guild.roles, name="Free agents")
+        guild = self.guild
+        member = guild.get_member(interaction.user.id) or await guild.fetch_member(interaction.user.id)
+        if not member:
+            await interaction.followup.send("❌ Could not find you in the server.", ephemeral=True)
+            return
 
-            if team_role:
-                await member.add_roles(team_role)
-            if free_agents_role and free_agents_role in member.roles:
-                await member.remove_roles(free_agents_role)
+        team_role = discord.utils.get(guild.roles, name=self.team_name)
+        free_agents_role = discord.utils.get(guild.roles, name="Free agents")
 
-            await interaction.followup.send(
-                f"You have accepted the offer and joined **{self.team_name}**!",
-                ephemeral=True
-            )
+        if team_role:
+            await member.add_roles(team_role)
+        if free_agents_role and free_agents_role in member.roles:
+            await member.remove_roles(free_agents_role)
 
-            # Notify the coach who made the offer
-            embed = discord.Embed(
-                title="🏈 UFFL - Offer Accepted",
-                description=f"{member.display_name} has accepted your offer to join **{self.team_name}**.",
-                color=discord.Color.green()
-            )
-            await self.coach.send(embed=embed)
+        await interaction.followup.send(
+            f"You have accepted the offer and joined **{self.team_name}**!",
+            ephemeral=True
+        )
 
-        except Exception as e:
-            await interaction.followup.send(f"❌ Something went wrong: `{e}`", ephemeral=True)
+        embed = discord.Embed(
+            title="🏈 UFFL - Offer Accepted",
+            description=f"{member.display_name} has accepted your offer to join **{self.team_name}**.",
+            color=discord.Color.green()
+        )
+        await self.coach.send(embed=embed)
         self.stop()
 
     @button(label="Decline", style=discord.ButtonStyle.danger)
@@ -257,40 +253,52 @@ async def on_application_command_error(interaction, error):
 @bot.tree.command(name="offer", description="Offer a player to join your team.")
 @app_commands.describe(target="The user to offer a spot on your team.")
 async def offer(interaction: discord.Interaction, target: discord.Member):
-    print("✅ Offer command loaded")  # 🟢 ADD THIS LINE RIGHT HERE
     await interaction.response.defer(ephemeral=True)
 
-
-    allowed_roles = {"Franchise Owner", "General Manager"}  # 👈 edit this as needed
-    if not any(role.name in allowed_roles for role in interaction.user.roles):
+    allowed_roles = {"Franchise Owner", "General Manager"}
+    sender_roles = {r.name for r in interaction.user.roles}
+    if not sender_roles & allowed_roles:
         await interaction.followup.send("You do not have permission to use this command.", ephemeral=True)
         return
 
     team_name = get_user_team(interaction.user)
     if not team_name:
-        await interaction.followup.send("I couldn't figure out your team. Make sure you have a team role matching your team name.", ephemeral=True)
+        await interaction.followup.send("Couldn't determine your team. Make sure you have a valid team role.", ephemeral=True)
         return
 
+    # Detect if sender is FO or GM
+    sender_rank = "Franchise Owner" if "Franchise Owner" in sender_roles else "General Manager"
+
+    # Pull logo (optional fallback)
+    if team_role and team_role.display_icon:
+    logo_url = team_role.display_icon.url
+elif interaction.guild.icon:
+    logo_url = interaction.guild.icon.url
+else:
+    logo_url = discord.Embed.Empty
+
+
     embed = discord.Embed(
-        title="UFFL - Team Invite",
-        description="Offer Received",
-        color=discord.Color.blue()
+        title="You Have Been Offered a Spot",
+        description=(
+            f"{interaction.user.mention}, who is the **{sender_rank}** of the **{team_name}**, "
+            f"has sent you an offer to join their team in **UFFL**."
+        ),
+        color=discord.Color.blurple()
     )
-    embed.add_field(name="\u200B", value=f"**{team_name}** has offered you in UFFL!", inline=False)
-    embed.add_field(name="Coach:", value=interaction.user.mention, inline=True)
+    embed.set_author(name="UFFL", icon_url=interaction.guild.icon.url if interaction.guild.icon else discord.Embed.Empty)
+    embed.set_thumbnail(url=logo_url)
+    embed.set_footer(text="Expires in 24 hours")
 
     view = OfferView(coach=interaction.user, team_name=team_name, guild=interaction.guild)
 
     try:
         await target.send(embed=embed, view=view)
+        await interaction.followup.send(f"✅ Offer sent to {target.display_name} from **{team_name}**.", ephemeral=True)
     except discord.Forbidden:
-        await interaction.followup.send("That user's DMs are closed.", ephemeral=True)
-        return
+        await interaction.followup.send("❌ That user's DMs are closed.", ephemeral=True)
     except Exception as e:
-        await interaction.followup.send(f"Unexpected error: {e}", ephemeral=True)
-        return
-
-    await interaction.followup.send(f"Offer sent to {target.display_name} from **{team_name}**.", ephemeral=True)
+        await interaction.followup.send(f"❌ Unexpected error: `{e}`", ephemeral=True)
 
 @bot.tree.command(name="release", description="Release a player from your team.")
 @app_commands.describe(target="The member you want to release from your team.")
