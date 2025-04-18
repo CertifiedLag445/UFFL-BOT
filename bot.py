@@ -270,7 +270,7 @@ async def offer(interaction: discord.Interaction, target: discord.Member):
     sender_rank = "Franchise Owner" if "Franchise Owner" in sender_roles else "General Manager"
 
     # Pull logo (optional fallback)
-    if team_role and team_role.display_icon:
+if team_role and team_role.display_icon:
     logo_url = team_role.display_icon.url
 elif interaction.guild.icon:
     logo_url = interaction.guild.icon.url
