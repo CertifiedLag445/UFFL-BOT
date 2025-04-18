@@ -77,7 +77,7 @@ async def alert_fo_of_gm_action(guild: discord.Guild, acting_member: discord.Mem
 
 
 class OfferView(View):
-    def __init__(self, coach: discord.Member, team_name: str, guild: discord.Guild, *, timeout=86400):  # 24 hours
+    def __init__(self, coach: discord.Member, team_name: str, guild: discord.Guild, *, timeout=86400):
         super().__init__(timeout=timeout)
         self.coach = coach
         self.team_name = team_name
@@ -86,7 +86,6 @@ class OfferView(View):
     @button(label="Accept", style=discord.ButtonStyle.success)
     async def accept_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
-
         guild = self.guild
         member = guild.get_member(interaction.user.id) or await guild.fetch_member(interaction.user.id)
         if not member:
@@ -118,6 +117,7 @@ class OfferView(View):
     async def decline_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message("You have declined the offer.", ephemeral=True)
         self.stop()
+
 
 class DemandConfirmView(View):
     def __init__(self, user: discord.Member, team_name: str, guild: discord.Guild):
@@ -266,17 +266,16 @@ async def offer(interaction: discord.Interaction, target: discord.Member):
         await interaction.followup.send("Couldn't determine your team. Make sure you have a valid team role.", ephemeral=True)
         return
 
-    # Detect if sender is FO or GM
     sender_rank = "Franchise Owner" if "Franchise Owner" in sender_roles else "General Manager"
+    team_role = discord.utils.get(interaction.guild.roles, name=team_name)
 
     # Pull logo (optional fallback)
-if team_role and team_role.display_icon:
-    logo_url = team_role.display_icon.url
-elif interaction.guild.icon:
-    logo_url = interaction.guild.icon.url
-else:
-    logo_url = discord.Embed.Empty
-
+    if team_role and team_role.display_icon:
+        logo_url = team_role.display_icon.url
+    elif interaction.guild.icon:
+        logo_url = interaction.guild.icon.url
+    else:
+        logo_url = discord.Embed.Empty
 
     embed = discord.Embed(
         title="You Have Been Offered a Spot",
