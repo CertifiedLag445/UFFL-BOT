@@ -208,6 +208,7 @@ class FootballFusionBot(commands.Bot):
             self.tree.add_command(give_role, guild=guild)
             self.tree.add_command(submit_score, guild=guild)
             self.tree.add_command(delete_score, guild=guild)
+            self.tree.add_command(view_scores, guild=guild)
             self.tree.add_command(team_info, guild=guild)
             self.tree.add_command(leaderboard, guild=guild)
             self.tree.add_command(group_create, guild=guild)
@@ -1093,25 +1094,51 @@ async def delete_score(interaction: discord.Interaction, team: str, opponent: st
 
     season_data = data.get(season, {})
     team_games = season_data.get(team, [])
+    opponent_games = season_data.get(opponent, [])
 
-    new_team_games = [g for g in team_games if not (g["opponent"] == opponent and g["date"] == date)]
-    if len(new_team_games) == len(team_games):
-        await interaction.response.send_message("⚠️ No matching game found for that team, opponent, and date.", ephemeral=True)
+    before = len(team_games)
+
+    # Remove from team's record
+    team_games = [g for g in team_games if not (g["opponent"] == opponent and g["date"] == date)]
+    opponent_games = [g for g in opponent_games if not (g["opponent"] == team and g["date"] == date)]
+
+    after = len(team_games)
+
+    if before == after:
+        await interaction.response.send_message("⚠️ No matching score found. Double check the team, opponent, and date (MM-DD-YYYY).", ephemeral=True)
         return
 
-    data[season][team] = new_team_games
-
-    # Remove from opponent as well
-    opponent_games = season_data.get(opponent, [])
-    data[season][opponent] = [g for g in opponent_games if not (g["opponent"] == team and g["date"] == date)]
+    data[season][team] = team_games
+    data[season][opponent] = opponent_games
 
     with open("uffl_scores.json", "w") as f:
         json.dump(data, f, indent=4)
 
     await interaction.response.send_message(
-        f"🗑️ Score deleted: **{team} vs {opponent}** on `{date}` (Season {season})",
-        ephemeral=True
+        f"🗑️ Score deleted between **{team}** and **{opponent}** on `{date}`.", ephemeral=True
     )
+
+@bot.tree.command(name="view_scores", description="View all recorded scores for a team.")
+@app_commands.describe(team="The team to view scores for", season="Season (e.g. 2025)")
+async def view_scores(interaction: discord.Interaction, team: str, season: str = "2025"):
+    try:
+        with open("uffl_scores.json", "r") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        await interaction.response.send_message("❌ Score data file not found.", ephemeral=True)
+        return
+
+    team_games = data.get(season, {}).get(team, [])
+
+    if not team_games:
+        await interaction.response.send_message(f"📭 No scores found for **{team}** in season {season}.", ephemeral=True)
+        return
+
+    msg = f"📋 Scores for **{team}**:\n"
+    for g in team_games:
+        msg += f"- vs **{g['opponent']}** on `{g['date']}` → {g['team_score']}-{g['opponent_score']}\n"
+
+    await interaction.response.send_message(msg, ephemeral=True)
 
 
 @bot.tree.command(name="team_info", description="View stats for a specific team in a given season.")
