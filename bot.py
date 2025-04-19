@@ -1,4 +1,3 @@
-import asyncpg
 import os
 import json
 import time
@@ -35,9 +34,6 @@ def get_user_team(user: discord.Member):
         if role.name in TEAM_NAMES:
             return role.name
     return None
-
-db_pool = None
-
 
 # 👇 Add this here
 async def alert_fo_of_gm_action(guild: discord.Guild, acting_member: discord.Member, action: str, target: discord.Member):
@@ -223,12 +219,6 @@ class FootballFusionBot(commands.Bot):
             self.tree.add_command(debugcheck, guild=guild)
             self.tree.add_command(botcmds, guild=guild)
             await self.tree.sync(guild=guild)
-
-            # ✅ Connect to PostgreSQL
-            global db_pool
-            if db_pool is None:
-                db_pool = await asyncpg.create_pool(dsn=os.environ["DATABASE_URL"])
-                print("✅ Connected to PostgreSQL")
 
             # Debug output
             print("✅ All global and guild commands wiped and re-synced.")
