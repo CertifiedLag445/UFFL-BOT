@@ -26,7 +26,7 @@ TEAM_NAMES = [
     "Newark", "Minnesota", "Miami", "Los Angeles", "Las Vegas", "Kansas City",
     "Jacksonville", "Indianapolis", "Houston", "Green Bay", "Detroit",
     "Denver", "Dallas", "Cleveland", "Cincinnati", "Chicago", "Charlotte",
-    "Buffalo", "Baltimore", "Atlanta", "Arizona"
+    "Buffalo", "Baltimore", "Atlanta", "Arizona", "Tampa Bay"
 ]
 
 def get_user_team(user: discord.Member):
