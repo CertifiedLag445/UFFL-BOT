@@ -602,11 +602,14 @@ async def roster(interaction: discord.Interaction):
         await interaction.followup.send("No teams or FOs with matching roles found.", ephemeral=True)
         return
 
-    embed = discord.Embed(
+    # Split large embed into chunks to avoid hitting 6000-character limit
+    embeds = []
+    chunk = discord.Embed(
         title="UFFL Team Roster",
         description="Franchise Owners and their complete team lineups",
         color=discord.Color.teal()
     )
+    current_length = len(chunk.description)
 
     for team_name in sorted(team_data.keys()):
         fo = team_data[team_name]["fo"]
@@ -628,14 +631,28 @@ async def roster(interaction: discord.Interaction):
         else:
             team_list += "_No other members on this team._\n"
 
-        embed.add_field(
+        # If the new field would make this embed too large, start a new one
+        if current_length + len(team_list) >= 5500 or len(chunk.fields) >= 5:
+            embeds.append(chunk)
+            chunk = discord.Embed(
+                title="UFFL Team Roster (continued)",
+                color=discord.Color.teal()
+            )
+            current_length = 0
+
+        chunk.add_field(
             name=f"🏈 {team_name} — {total_members} member{'s' if total_members != 1 else ''}",
             value=team_list,
             inline=False
         )
+        current_length += len(team_list)
 
+    embeds.append(chunk)
+
+    # Try to send each chunk
     try:
-        await interaction.user.send(embed=embed)
+        for e in embeds:
+            await interaction.user.send(embed=e)
         await interaction.followup.send("📬 Sorted roster sent to your DMs.", ephemeral=True)
     except discord.Forbidden:
         await interaction.followup.send("❌ Could not send DM. Please make sure your DMs are open.", ephemeral=True)
