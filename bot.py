@@ -738,7 +738,7 @@ async def game_thread(interaction: discord.Interaction, team1: str, team2: str):
         thread = await channel.create_thread(
             name=thread_name,
             type=discord.ChannelType.private_thread,
-            auto_archive_duration=1440
+            auto_archive_duration=10080
         )
 
         for m in invited:
@@ -1434,7 +1434,7 @@ async def group_thread(interaction: discord.Interaction, group: app_commands.Cho
         thread = await channel.create_thread(
             name=f"Group {group_key} Thread",
             type=discord.ChannelType.private_thread,
-            auto_archive_duration=1440,
+            auto_archive_duration=10080,
             invitable=False  # prevents unwanted invites, optional
         )
 
