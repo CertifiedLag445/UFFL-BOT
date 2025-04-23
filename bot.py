@@ -11,6 +11,11 @@ import discord
 from discord import app_commands, Interaction, Embed
 from discord.ext import commands
 from discord.ui import View, button
+import pytesseract
+pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
+from PIL import Image
+import io
+import re
 
 
 
@@ -217,6 +222,9 @@ class FootballFusionBot(commands.Bot):
             self.tree.add_command(group_thread, guild=guild)
             self.tree.add_command(fo_dashboard, guild=guild)
             self.tree.add_command(team_dashboard, guild=guild)
+            self.tree.add_command(submit_stats, guild=guild)
+            self.tree.add_commands(stats_lb, guild=guild)
+            self.tree.add_commands(import_game_stats, guild=guild)
             self.tree.add_command(debugcheck, guild=guild)
             self.tree.add_command(botcmds, guild=guild)
             await self.tree.sync(guild=guild)
@@ -656,6 +664,7 @@ async def roster(interaction: discord.Interaction):
         await interaction.followup.send("📬 Sorted roster sent to your DMs.", ephemeral=True)
     except discord.Forbidden:
         await interaction.followup.send("❌ Could not send DM. Please make sure your DMs are open.", ephemeral=True)
+
 
 
 @bot.tree.command(name="deadline_reminder", description="DM all Franchise Owners a deadline reminder.")
@@ -1614,6 +1623,276 @@ async def team_dashboard(interaction: discord.Interaction, team: str):
         await interaction.response.send_message("📬 Team dashboard sent to your DMs.", ephemeral=True)
     except discord.Forbidden:
         await interaction.response.send_message("❌ Could not send DM. Please make sure your DMs are open.", ephemeral=True)
+
+@bot.tree.command(name="submit_stats", description="Manually submit a stat line for a player.")
+@app_commands.describe(
+    user="The player you're submitting stats for",
+    position="Player's position (e.g. Passer, Runner, Corner...)",
+    stat_category="Stat name (e.g. TDs, Yards, INTs...)",
+    value="Stat value (number or text)"
+)
+async def submit_stats(
+    interaction: discord.Interaction,
+    user: discord.Member,
+    position: str,
+    stat_category: str,
+    value: str  # use str to allow values like '25/48'
+):
+    allowed_roles = {"Founder", "Commissioners"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.response.send_message("❌ You don’t have permission to use this command.", ephemeral=True)
+        return
+
+    position = position.title().strip()
+    stat_category = stat_category.strip()
+    user_id = str(user.id)
+
+    try:
+        with open("uffl_player_stats.json", "r") as f:
+            stats_data = json.load(f)
+    except FileNotFoundError:
+        stats_data = {}
+
+    stats_data.setdefault(position, {})
+    stats_data[position].setdefault(user_id, {"name": user.display_name, "games": []})
+
+    # Create new game entry
+    stats_data[position][user_id]["games"].append({
+        stat_category: try_parse_stat(value)
+    })
+
+    with open("uffl_player_stats.json", "w") as f:
+        json.dump(stats_data, f, indent=4)
+
+    await interaction.response.send_message(
+        f"✅ Added stat for **{user.display_name}** ({position}): `{stat_category} = {value}`",
+        ephemeral=True
+    )
+
+def try_parse_stat(value):
+    try:
+        return int(value)
+    except ValueError:
+        try:
+            return float(value)
+        except ValueError:
+            return value  # keep as string for things like "25/48"
+
+@bot.tree.command(name="stats_lb", description="View the top 3 players in a specific stat and position.")
+@app_commands.describe(
+    position="Player position (Passer, Runner, etc.)",
+    stat_category="Stat to rank by (e.g. Yards, TDs, Comp/Att...)"
+)
+async def stats_lb(interaction: discord.Interaction, position: str, stat_category: str):
+    position = position.title().strip()
+    stat_category = stat_category.strip()
+
+    try:
+        with open("uffl_player_stats.json", "r") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        await interaction.response.send_message("❌ No stats data found yet.", ephemeral=True)
+        return
+
+    if position not in data:
+        await interaction.response.send_message(f"❌ No data for position `{position}`.", ephemeral=True)
+        return
+
+    leaderboard = []
+
+    for user_id, player_data in data[position].items():
+        total = 0
+        count = 0
+        best = None
+
+        for game in player_data.get("games", []):
+            stat_val = game.get(stat_category)
+            if stat_val is None:
+                continue
+
+            # Normalize stat types
+            if isinstance(stat_val, str) and "/" in stat_val:
+                continue  # skip string ratios like "25/48"
+            try:
+                val = float(stat_val)
+            except:
+                continue
+
+            total += val
+            count += 1
+            if best is None or val > best:
+                best = val
+
+        if count == 0:
+            continue
+
+        final_score = total if stat_category.lower() in ["tds", "yards", "int", "misses", "tackles", "sacks", "yac", "attempts"] else (total / count)
+        leaderboard.append((user_id, player_data["name"], final_score))
+
+    if not leaderboard:
+        await interaction.response.send_message("📭 No data found for that stat.", ephemeral=True)
+        return
+
+    leaderboard.sort(key=lambda x: x[2], reverse=True)
+    top3 = leaderboard[:3]
+
+    embed = discord.Embed(
+        title=f"🏆 Top 3 — {position} - {stat_category}",
+        description="Sorted by highest stat value.",
+        color=discord.Color.gold()
+    )
+
+    medals = ["🥇", "🥈", "🥉"]
+    for idx, (uid, name, value) in enumerate(top3):
+        embed.add_field(
+            name=f"{medals[idx]} {name}",
+            value=f"`{value}`",
+            inline=False
+        )
+
+    await interaction.response.send_message(embed=embed, ephemeral=False)
+
+@bot.tree.command(name="import_game_stats", description="Import stats from game screenshots using OCR.")
+async def import_game_stats(interaction: discord.Interaction):
+    allowed_roles = {"Founder", "Commissioners"}
+    if not any(role.name in allowed_roles for role in interaction.user.roles):
+        await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
+        return
+
+    if not interaction.message or not interaction.message.reference:
+        await interaction.response.send_message("❗ You must **reply to a message** that contains stat screenshots.", ephemeral=True)
+        return
+
+    # Fetch the original message
+    replied_msg = await interaction.channel.fetch_message(interaction.message.reference.message_id)
+    images = [att for att in replied_msg.attachments if att.content_type.startswith("image")]
+
+    if not images:
+        await interaction.response.send_message("❌ No image attachments found in the replied message.", ephemeral=True)
+        return
+
+    results = {}
+    failed_images = 0
+
+    for image in images:
+        try:
+            img_bytes = await image.read()
+            img = Image.open(io.BytesIO(img_bytes)).convert("L")  # grayscale
+
+            text = pytesseract.image_to_string(img)
+            lines = [line.strip() for line in text.split("\n") if line.strip()]
+            category = detect_stat_category(lines)
+
+            if not category:
+                failed_images += 1
+                continue
+
+            if category not in results:
+                results[category] = []
+
+            parsed = parse_stat_lines(lines, category)
+            results[category].extend(parsed)
+        except Exception as e:
+            failed_images += 1
+
+    if not results:
+        await interaction.response.send_message("❌ Failed to extract any stats from the images.", ephemeral=True)
+        return
+
+    embed = discord.Embed(title="📊 Parsed Game Stats (Preview)", color=discord.Color.teal())
+    for category, players in results.items():
+        preview = "\n".join([f"• {p['name']}" for p in players[:5]])
+        embed.add_field(name=f"{category} ({len(players)} players)", value=preview, inline=False)
+
+    await interaction.response.send_message(embed=embed, view=ConfirmImportView(results), ephemeral=True)
+
+def detect_stat_category(lines):
+    categories = {
+        "Passer": ["Comp/Att", "Passer Rating", "Yards", "TDs", "INTs"],
+        "Runner": ["Misses", "Yards", "Attempts", "Long"],
+        "Receiver": ["Targets", "Catches", "YAC", "INTs Allowed"],
+        "Corner": ["Deny Rate", "Swats", "Comp Allowed", "INTs"],
+        "Defender": ["Tackles", "Misses", "Sacks", "Safeties", "FF", "FR"],
+        "Kicker": ["Good/Att", "Longest", "47+"]
+    }
+    for category, keywords in categories.items():
+        if any(any(kw.lower() in line.lower() for kw in keywords) for line in lines):
+            return category
+    return None
+
+def parse_stat_lines(lines, category):
+    players = []
+    for line in lines:
+        # Simple pattern matcher: name followed by numbers
+        match = re.match(r"^(\S+)\s+(.+)$", line)
+        if match:
+            name = match.group(1)
+            raw_stats = match.group(2).split()
+            stats = {}
+            # You’ll customize this per category below
+            if category == "Passer" and len(raw_stats) >= 7:
+                stats = {
+                    "Passer Rating": raw_stats[0],
+                    "Comp/Att": raw_stats[1],
+                    "TDs": int(raw_stats[2]),
+                    "INTs": int(raw_stats[3]),
+                    "Sacks": int(raw_stats[4]),
+                    "Yards": int(raw_stats[5]),
+                    "Long": int(raw_stats[6])
+                }
+            elif category == "Runner" and len(raw_stats) >= 6:
+                stats = {
+                    "TDs": int(raw_stats[0]),
+                    "Attempts": int(raw_stats[1]),
+                    "Misses": int(raw_stats[2]),
+                    "Yards": int(raw_stats[3]),
+                    "Miss Per Attempt": float(raw_stats[4]),
+                    "Long": int(raw_stats[5])
+                }
+            # Add other categories here...
+            players.append({
+                "name": name,
+                "stats": stats
+            })
+    return players
+
+class ConfirmImportView(discord.ui.View):
+    def __init__(self, results):
+        super().__init__(timeout=60)
+        self.results = results
+
+    @discord.ui.button(label="✅ Confirm Save", style=discord.ButtonStyle.green)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            with open("uffl_player_stats.json", "r") as f:
+                data = json.load(f)
+        except:
+            data = {}
+
+        for position, players in self.results.items():
+            if position not in data:
+                data[position] = {}
+
+            for player in players:
+                name = player["name"]
+                stats = player["stats"]
+                user_key = find_or_create_player_id(data[position], name)
+
+                if user_key not in data[position]:
+                    data[position][user_key] = {"name": name, "games": []}
+
+                data[position][user_key]["games"].append(stats)
+
+        with open("uffl_player_stats.json", "w") as f:
+            json.dump(data, f, indent=4)
+
+        await interaction.response.edit_message(content="✅ Stats saved successfully!", embed=None, view=None)
+
+def find_or_create_player_id(player_data, name):
+    for uid, pdata in player_data.items():
+        if pdata["name"].lower() == name.lower():
+            return uid
+    return str(max([int(uid) for uid in player_data.keys()] + [100000]) + 1)
 
 
 @bot.tree.command(name="botcmds", description="DMs you a list of all bot commands.")
