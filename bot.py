@@ -1772,15 +1772,6 @@ async def import_game_stats(interaction: discord.Interaction):
         await interaction.response.send_message("❌ No image attachments found in the recent message.", ephemeral=True)
         return
 
-
-    # Fetch the original message
-    replied_msg = await interaction.channel.fetch_message(interaction.message.reference.message_id)
-    images = [att for att in replied_msg.attachments if att.content_type.startswith("image")]
-
-    if not images:
-        await interaction.response.send_message("❌ No image attachments found in the replied message.", ephemeral=True)
-        return
-
     results = {}
     failed_images = 0
 
