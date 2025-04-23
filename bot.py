@@ -1812,18 +1812,21 @@ async def import_game_stats(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, view=ConfirmImportView(results), ephemeral=True)
 
 def detect_stat_category(lines):
-    categories = {
-        "Passer": ["Comp/Att", "Passer Rating", "Yards", "TDs", "INTs"],
-        "Runner": ["Misses", "Yards", "Attempts", "Long"],
-        "Receiver": ["Targets", "Catches", "YAC", "INTs Allowed"],
-        "Corner": ["Deny Rate", "Swats", "Comp Allowed", "INTs"],
-        "Defender": ["Tackles", "Misses", "Sacks", "Safeties", "FF", "FR"],
-        "Kicker": ["Good/Att", "Longest", "47+"]
+    keyword_map = {
+        "Passer": ["Passer Rating", "Comp/Att"],
+        "Runner": ["Miss Per Attempt", "Attempts"],
+        "Receiver": ["YAC", "INTs Allowed", "Catches"],
+        "Corner": ["Deny Rate", "DB Rating", "Swats"],
+        "Defender": ["Forced Fumbles", "Recovered Fumbles", "Safeties"],
+        "Kicker": ["Good/Att", "Longest Kick", ">47"]
     }
-    for category, keywords in categories.items():
+
+    for category, keywords in keyword_map.items():
         if any(any(kw.lower() in line.lower() for kw in keywords) for line in lines):
             return category
+
     return None
+
 
 def parse_stat_lines(lines, category):
     players = []
@@ -1839,82 +1842,92 @@ def parse_stat_lines(lines, category):
         if len(line) < 10 or line.count(" ") < 2:
             continue  # too short to be a real stat line
 
+        print(f"[DEBUG LINE]: {line}")  # Show every line being processed
+
         match = re.match(r"^(\S+)\s+(.+)$", line)
-        if not match:
-            continue
+        if match:
+            name = match.group(1)
+            raw_stats = match.group(2).split()
 
-        name = match.group(1)
-        raw_stats = match.group(2).split()
-        stats = {}
+            print(f"[MATCHED] Name: {name} | Raw Stats: {raw_stats}")
 
-        try:
-            if category == "Passer" and len(raw_stats) >= 7:
-                stats = {
-                    "Passer Rating": raw_stats[0],
-                    "Comp/Att": raw_stats[1],
-                    "TDs": int(raw_stats[2]),
-                    "INTs": int(raw_stats[3]),
-                    "Sacks": int(raw_stats[4]),
-                    "Yards": int(raw_stats[5]),
-                    "Long": int(raw_stats[6])
-                }
+            stats = {}
 
-            elif category == "Runner" and len(raw_stats) >= 6:
-                stats = {
-                    "TDs": int(raw_stats[0]),
-                    "Attempts": int(raw_stats[1]),
-                    "Misses": int(raw_stats[2]),
-                    "Yards": int(raw_stats[3]),
-                    "Miss Per Attempt": float(raw_stats[4]),
-                    "Long": int(raw_stats[5])
-                }
+            try:
+                if category == "Passer" and len(raw_stats) >= 7:
+                    stats = {
+                        "Passer Rating": raw_stats[0],
+                        "Comp/Att": raw_stats[1],
+                        "TDs": int(raw_stats[2]),
+                        "INTs": int(raw_stats[3]),
+                        "Sacks": int(raw_stats[4]),
+                        "Yards": int(raw_stats[5]),
+                        "Long": int(raw_stats[6])
+                    }
 
-            elif category == "Receiver" and len(raw_stats) >= 7:
-                stats = {
-                    "Catches": int(raw_stats[0]),
-                    "Targets": int(raw_stats[1]),
-                    "TDs": int(raw_stats[2]),
-                    "INTs Allowed": int(raw_stats[3]),
-                    "YAC": int(raw_stats[4]),
-                    "Yards": int(raw_stats[5]),
-                    "Long": int(raw_stats[6])
-                }
+                elif category == "Runner" and len(raw_stats) >= 6:
+                    stats = {
+                        "TDs": int(raw_stats[0]),
+                        "Attempts": int(raw_stats[1]),
+                        "Misses": int(raw_stats[2]),
+                        "Yards": int(raw_stats[3]),
+                        "Miss Per Attempt": float(raw_stats[4]),
+                        "Long": int(raw_stats[5])
+                    }
 
-            elif category == "Corner" and len(raw_stats) >= 7:
-                stats = {
-                    "INTs": int(raw_stats[0]),
-                    "DB Rating": float(raw_stats[1]),
-                    "Deny Rate %": raw_stats[2],
-                    "Targets": int(raw_stats[3]),
-                    "Swats": int(raw_stats[4]),
-                    "TDs": int(raw_stats[5]),
-                    "Comp Allowed": int(raw_stats[6])
-                }
+                elif category == "Receiver" and len(raw_stats) >= 7:
+                    stats = {
+                        "Catches": int(raw_stats[0]),
+                        "Targets": int(raw_stats[1]),
+                        "TDs": int(raw_stats[2]),
+                        "INTs Allowed": int(raw_stats[3]),
+                        "YAC": int(raw_stats[4]),
+                        "Yards": int(raw_stats[5]),
+                        "Long": int(raw_stats[6])
+                    }
 
-            elif category == "Defender" and len(raw_stats) >= 6:
-                stats = {
-                    "Tackles": int(raw_stats[0]),
-                    "Misses": int(raw_stats[1]),
-                    "Sacks": int(raw_stats[2]),
-                    "Safeties": int(raw_stats[3]),
-                    "Forced Fumbles": int(raw_stats[4]),
-                    "Recovered Fumbles": int(raw_stats[5])
-                }
+                elif category == "Corner" and len(raw_stats) >= 7:
+                    stats = {
+                        "INTs": int(raw_stats[0]),
+                        "DB Rating": float(raw_stats[1]),
+                        "Deny Rate %": raw_stats[2],
+                        "Targets": int(raw_stats[3]),
+                        "Swats": int(raw_stats[4]),
+                        "TDs": int(raw_stats[5]),
+                        "Comp Allowed": int(raw_stats[6])
+                    }
 
-            elif category == "Kicker" and len(raw_stats) >= 4:
-                stats = {
-                    "Successful %": raw_stats[0],
-                    "Good/Att": raw_stats[1],
-                    "Longest Kick": int(raw_stats[2]),
-                    ">47": int(raw_stats[3])
-                }
+                elif category == "Defender" and len(raw_stats) >= 6:
+                    stats = {
+                        "Tackles": int(raw_stats[0]),
+                        "Misses": int(raw_stats[1]),
+                        "Sacks": int(raw_stats[2]),
+                        "Safeties": int(raw_stats[3]),
+                        "Forced Fumbles": int(raw_stats[4]),
+                        "Recovered Fumbles": int(raw_stats[5])
+                    }
 
-            if stats:
-                players.append({"name": name, "stats": stats})
-        except Exception:
-            continue
+                elif category == "Kicker" and len(raw_stats) >= 4:
+                    stats = {
+                        "Successful %": raw_stats[0],
+                        "Good/Att": raw_stats[1],
+                        "Longest Kick": int(raw_stats[2]),
+                        ">47": int(raw_stats[3])
+                    }
+
+                if stats:
+                    print(f"[ADDED] {name}: {stats}")
+                    players.append({"name": name, "stats": stats})
+
+            except Exception as e:
+                print(f"[ERROR PARSING] {name}: {e}")
+                continue
+
+        else:
+            print("[SKIPPED] Didn't match expected pattern")
 
     return players
+
 
 
 class ConfirmImportView(discord.ui.View):
