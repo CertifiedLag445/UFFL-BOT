@@ -1781,6 +1781,10 @@ async def import_game_stats(interaction: discord.Interaction):
             img = Image.open(io.BytesIO(img_bytes)).convert("L")  # grayscale
 
             text = pytesseract.image_to_string(img)
+            print("==== OCR RAW OUTPUT ====")
+            print(text)
+            print("========================")
+
             lines = [line.strip() for line in text.split("\n") if line.strip()]
             category = detect_stat_category(lines)
 
@@ -1823,14 +1827,27 @@ def detect_stat_category(lines):
 
 def parse_stat_lines(lines, category):
     players = []
+
     for line in lines:
-        # Simple pattern matcher: name followed by numbers
+        # Skip garbage rows
+        if not line or len(line.split()) < 2:
+            continue
+        if any(skip in line for skip in ["@", "Support", "Ticket", "https", "discord.gg", "#", ":"]):
+            continue
+        if re.match(r"^https?://", line):  # skip links
+            continue
+        if len(line) < 10 or line.count(" ") < 2:
+            continue  # too short to be a real stat line
+
         match = re.match(r"^(\S+)\s+(.+)$", line)
-        if match:
-            name = match.group(1)
-            raw_stats = match.group(2).split()
-            stats = {}
-            # You’ll customize this per category below
+        if not match:
+            continue
+
+        name = match.group(1)
+        raw_stats = match.group(2).split()
+        stats = {}
+
+        try:
             if category == "Passer" and len(raw_stats) >= 7:
                 stats = {
                     "Passer Rating": raw_stats[0],
@@ -1841,6 +1858,7 @@ def parse_stat_lines(lines, category):
                     "Yards": int(raw_stats[5]),
                     "Long": int(raw_stats[6])
                 }
+
             elif category == "Runner" and len(raw_stats) >= 6:
                 stats = {
                     "TDs": int(raw_stats[0]),
@@ -1850,12 +1868,54 @@ def parse_stat_lines(lines, category):
                     "Miss Per Attempt": float(raw_stats[4]),
                     "Long": int(raw_stats[5])
                 }
-            # Add other categories here...
-            players.append({
-                "name": name,
-                "stats": stats
-            })
+
+            elif category == "Receiver" and len(raw_stats) >= 7:
+                stats = {
+                    "Catches": int(raw_stats[0]),
+                    "Targets": int(raw_stats[1]),
+                    "TDs": int(raw_stats[2]),
+                    "INTs Allowed": int(raw_stats[3]),
+                    "YAC": int(raw_stats[4]),
+                    "Yards": int(raw_stats[5]),
+                    "Long": int(raw_stats[6])
+                }
+
+            elif category == "Corner" and len(raw_stats) >= 7:
+                stats = {
+                    "INTs": int(raw_stats[0]),
+                    "DB Rating": float(raw_stats[1]),
+                    "Deny Rate %": raw_stats[2],
+                    "Targets": int(raw_stats[3]),
+                    "Swats": int(raw_stats[4]),
+                    "TDs": int(raw_stats[5]),
+                    "Comp Allowed": int(raw_stats[6])
+                }
+
+            elif category == "Defender" and len(raw_stats) >= 6:
+                stats = {
+                    "Tackles": int(raw_stats[0]),
+                    "Misses": int(raw_stats[1]),
+                    "Sacks": int(raw_stats[2]),
+                    "Safeties": int(raw_stats[3]),
+                    "Forced Fumbles": int(raw_stats[4]),
+                    "Recovered Fumbles": int(raw_stats[5])
+                }
+
+            elif category == "Kicker" and len(raw_stats) >= 4:
+                stats = {
+                    "Successful %": raw_stats[0],
+                    "Good/Att": raw_stats[1],
+                    "Longest Kick": int(raw_stats[2]),
+                    ">47": int(raw_stats[3])
+                }
+
+            if stats:
+                players.append({"name": name, "stats": stats})
+        except Exception:
+            continue
+
     return players
+
 
 class ConfirmImportView(discord.ui.View):
     def __init__(self, results):
