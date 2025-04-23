@@ -1759,9 +1759,19 @@ async def import_game_stats(interaction: discord.Interaction):
         await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
         return
 
-    if not interaction.message or not interaction.message.reference:
-        await interaction.response.send_message("❗ You must **reply to a message** that contains stat screenshots.", ephemeral=True)
+    # Try to fetch the last message in the channel that isn't from the bot
+    messages = [m async for m in interaction.channel.history(limit=10)]
+    target_msg = next((m for m in messages if m.author != interaction.client.user and m.attachments), None)
+
+    if not target_msg:
+        await interaction.response.send_message("❌ Could not find a recent message with stat screenshots in this channel. Please upload or repost them before running this command.", ephemeral=True)
         return
+
+    images = [att for att in target_msg.attachments if att.content_type and att.content_type.startswith("image")]
+    if not images:
+        await interaction.response.send_message("❌ No image attachments found in the recent message.", ephemeral=True)
+        return
+
 
     # Fetch the original message
     replied_msg = await interaction.channel.fetch_message(interaction.message.reference.message_id)
