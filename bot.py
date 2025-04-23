@@ -1778,7 +1778,8 @@ async def import_game_stats(interaction: discord.Interaction):
     for image in images:
         try:
             img_bytes = await image.read()
-            img = Image.open(io.BytesIO(img_bytes)).convert("L")  # grayscale
+            img = Image.open(io.BytesIO(img_bytes)).convert("L")
+            img = img.point(lambda p: 255 if p > 160 else 0)
 
             text = pytesseract.image_to_string(img)
             print("==== OCR RAW OUTPUT ====")
