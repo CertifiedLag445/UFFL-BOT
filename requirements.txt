@@ -1,3 +1,6 @@
 discord.py
 flask
 pytz
+pytesseract
+pillow
+opencv-python
