@@ -1752,188 +1752,65 @@ async def stats_lb(interaction: discord.Interaction, position: str, stat_categor
 
     await interaction.response.send_message(embed=embed, ephemeral=False)
 
-@bot.tree.command(name="import_game_stats", description="Import stats from game screenshots using OCR.")
-async def import_game_stats(interaction: discord.Interaction):
+@bot.tree.command(name="import_game_images", description="Attach stat screenshots to import player stats.")
+@app_commands.describe(
+    images="Attach 1–10 stat screenshots (each image = 1 position)"
+)
+async def import_game_images(interaction: discord.Interaction, images: list[discord.Attachment]):
     allowed_roles = {"Founder", "Commissioners"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
-        await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
+        await interaction.response.send_message("❌ You don’t have permission to use this command.", ephemeral=True)
         return
 
-    # Try to fetch the last message in the channel that isn't from the bot
-    messages = [m async for m in interaction.channel.history(limit=10)]
-    target_msg = next((m for m in messages if m.author != interaction.client.user and m.attachments), None)
-
-    if not target_msg:
-        await interaction.response.send_message("❌ Could not find a recent message with stat screenshots in this channel. Please upload or repost them before running this command.", ephemeral=True)
+    if not images or len(images) == 0:
+        await interaction.response.send_message("❌ You must attach stat images to this command.", ephemeral=True)
         return
 
-    images = [att for att in target_msg.attachments if att.content_type and att.content_type.startswith("image")]
-    if not images:
-        await interaction.response.send_message("❌ No image attachments found in the recent message.", ephemeral=True)
-        return
+    await interaction.response.defer(ephemeral=True)
 
     results = {}
-    failed_images = 0
-
     for image in images:
         try:
             img_bytes = await image.read()
             img = Image.open(io.BytesIO(img_bytes)).convert("L")
-            img = img.point(lambda p: 255 if p > 160 else 0)
+            img = img.point(lambda p: 255 if p > 160 else 0)  # binarize
 
             text = pytesseract.image_to_string(img)
-            print("==== OCR RAW OUTPUT ====")
-            print(text)
-            print("========================")
-
             lines = [line.strip() for line in text.split("\n") if line.strip()]
             category = detect_stat_category(lines)
 
             if not category:
-                failed_images += 1
+                continue
+
+            parsed = parse_stat_lines(lines, category)
+            if not parsed:
                 continue
 
             if category not in results:
                 results[category] = []
-
-            parsed = parse_stat_lines(lines, category)
             results[category].extend(parsed)
+
         except Exception as e:
-            failed_images += 1
+            print(f"[IMPORT ERROR]: {e}")
+            continue
 
     if not results:
-        await interaction.response.send_message("❌ Failed to extract any stats from the images.", ephemeral=True)
+        await interaction.followup.send("❌ No valid stats detected in the uploaded images.", ephemeral=True)
         return
 
-    embed = discord.Embed(title="📊 Parsed Game Stats (Preview)", color=discord.Color.teal())
-    for category, players in results.items():
-        preview = "\n".join([f"• {p['name']}" for p in players[:5]])
-        embed.add_field(name=f"{category} ({len(players)} players)", value=preview, inline=False)
+    embeds = []
+    for position, players in results.items():
+        embed = discord.Embed(title=f"📊 {position} Stats", color=discord.Color.green())
+        for player in players:
+            lines = [f"`{k}`: {v}" for k, v in player["stats"].items()]
+            embed.add_field(name=player["name"], value="\n".join(lines), inline=False)
+        embeds.append(embed)
 
-    await interaction.response.send_message(embed=embed, view=ConfirmImportView(results), ephemeral=True)
-
-def detect_stat_category(lines):
-    keyword_map = {
-        "Passer": ["Passer Rating", "Comp/Att"],
-        "Runner": ["Miss Per Attempt", "Attempts"],
-        "Receiver": ["YAC", "INTs Allowed", "Catches"],
-        "Corner": ["Deny Rate", "DB Rating", "Swats"],
-        "Defender": ["Forced Fumbles", "Recovered Fumbles", "Safeties"],
-        "Kicker": ["Good/Att", "Longest Kick", ">47"]
-    }
-
-    for category, keywords in keyword_map.items():
-        if any(any(kw.lower() in line.lower() for kw in keywords) for line in lines):
-            return category
-
-    return None
-
-
-def parse_stat_lines(lines, category):
-    players = []
-
-    for line in lines:
-        # Skip garbage rows
-        if not line or len(line.split()) < 2:
-            continue
-        if any(skip in line for skip in ["@", "Support", "Ticket", "https", "discord.gg", "#", ":"]):
-            continue
-        if re.match(r"^https?://", line):  # skip links
-            continue
-        if len(line) < 10 or line.count(" ") < 2:
-            continue  # too short to be a real stat line
-
-        print(f"[DEBUG LINE]: {line}")  # Show every line being processed
-
-        match = re.match(r"^(\S+)\s+(.+)$", line)
-        if match:
-            name = match.group(1)
-            raw_stats = match.group(2).split()
-
-            print(f"[MATCHED] Name: {name} | Raw Stats: {raw_stats}")
-
-            stats = {}
-
-            try:
-                if category == "Passer" and len(raw_stats) >= 7:
-                    stats = {
-                        "Passer Rating": raw_stats[0],
-                        "Comp/Att": raw_stats[1],
-                        "TDs": int(raw_stats[2]),
-                        "INTs": int(raw_stats[3]),
-                        "Sacks": int(raw_stats[4]),
-                        "Yards": int(raw_stats[5]),
-                        "Long": int(raw_stats[6])
-                    }
-
-                elif category == "Runner" and len(raw_stats) >= 6:
-                    stats = {
-                        "TDs": int(raw_stats[0]),
-                        "Attempts": int(raw_stats[1]),
-                        "Misses": int(raw_stats[2]),
-                        "Yards": int(raw_stats[3]),
-                        "Miss Per Attempt": float(raw_stats[4]),
-                        "Long": int(raw_stats[5])
-                    }
-
-                elif category == "Receiver" and len(raw_stats) >= 7:
-                    stats = {
-                        "Catches": int(raw_stats[0]),
-                        "Targets": int(raw_stats[1]),
-                        "TDs": int(raw_stats[2]),
-                        "INTs Allowed": int(raw_stats[3]),
-                        "YAC": int(raw_stats[4]),
-                        "Yards": int(raw_stats[5]),
-                        "Long": int(raw_stats[6])
-                    }
-
-                elif category == "Corner" and len(raw_stats) >= 7:
-                    stats = {
-                        "INTs": int(raw_stats[0]),
-                        "DB Rating": float(raw_stats[1]),
-                        "Deny Rate %": raw_stats[2],
-                        "Targets": int(raw_stats[3]),
-                        "Swats": int(raw_stats[4]),
-                        "TDs": int(raw_stats[5]),
-                        "Comp Allowed": int(raw_stats[6])
-                    }
-
-                elif category == "Defender" and len(raw_stats) >= 6:
-                    stats = {
-                        "Tackles": int(raw_stats[0]),
-                        "Misses": int(raw_stats[1]),
-                        "Sacks": int(raw_stats[2]),
-                        "Safeties": int(raw_stats[3]),
-                        "Forced Fumbles": int(raw_stats[4]),
-                        "Recovered Fumbles": int(raw_stats[5])
-                    }
-
-                elif category == "Kicker" and len(raw_stats) >= 4:
-                    stats = {
-                        "Successful %": raw_stats[0],
-                        "Good/Att": raw_stats[1],
-                        "Longest Kick": int(raw_stats[2]),
-                        ">47": int(raw_stats[3])
-                    }
-
-                if stats:
-                    print(f"[ADDED] {name}: {stats}")
-                    players.append({"name": name, "stats": stats})
-
-            except Exception as e:
-                print(f"[ERROR PARSING] {name}: {e}")
-                continue
-
-        else:
-            print("[SKIPPED] Didn't match expected pattern")
-
-    return players
-
-
+    await interaction.followup.send(content="✅ Review the stats below. Click confirm to save.", embeds=embeds, view=ConfirmImportView(results), ephemeral=True)
 
 class ConfirmImportView(discord.ui.View):
     def __init__(self, results):
-        super().__init__(timeout=60)
+        super().__init__(timeout=90)
         self.results = results
 
     @discord.ui.button(label="✅ Confirm Save", style=discord.ButtonStyle.green)
@@ -1961,13 +1838,27 @@ class ConfirmImportView(discord.ui.View):
         with open("uffl_player_stats.json", "w") as f:
             json.dump(data, f, indent=4)
 
-        await interaction.response.edit_message(content="✅ Stats saved successfully!", embed=None, view=None)
+        await interaction.response.edit_message(content="✅ Stats saved successfully!", embeds=[], view=None)
 
 def find_or_create_player_id(player_data, name):
     for uid, pdata in player_data.items():
         if pdata["name"].lower() == name.lower():
             return uid
     return str(max([int(uid) for uid in player_data.keys()] + [100000]) + 1)
+
+def detect_stat_category(lines):
+    categories = {
+        "Passer": ["Comp/Att", "Passer Rating", "Yards", "TDs", "INTs"],
+        "Runner": ["Misses", "Yards", "Attempts", "Long"],
+        "Receiver": ["Targets", "Catches", "YAC", "INTs Allowed"],
+        "Corner": ["Deny Rate", "Swats", "Comp Allowed", "INTs"],
+        "Defender": ["Tackles", "Misses", "Sacks", "Safeties", "FF", "FR"],
+        "Kicker": ["Good/Att", "Longest", "47+"]
+    }
+    for category, keywords in categories.items():
+        if any(any(kw.lower() in line.lower() for kw in keywords) for line in lines):
+            return category
+    return None
 
 
 @bot.tree.command(name="botcmds", description="DMs you a list of all bot commands.")
