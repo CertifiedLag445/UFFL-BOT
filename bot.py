@@ -1753,7 +1753,7 @@ async def stats_lb(interaction: discord.Interaction, position: str, stat_categor
     await interaction.response.send_message(embed=embed, ephemeral=False)
 
 @bot.tree.context_menu(name="Import Stats")
-async def import_from_image(interaction: discord.Interaction, message: discord.Message):
+async def Import_Stats(interaction: discord.Interaction, message: discord.Message):
     attachments = message.attachments
     if not attachments:
         await interaction.response.send_message("❌ No images found on that message.", ephemeral=True)
