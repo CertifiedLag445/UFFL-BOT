@@ -224,7 +224,7 @@ class FootballFusionBot(commands.Bot):
             self.tree.add_command(team_dashboard, guild=guild)
             self.tree.add_command(submit_stats, guild=guild)
             self.tree.add_command(stats_lb, guild=guild)
-            self.tree.add_command(import_from_image, guild=guild)
+            self.tree.add_command(Import_Stats, guild=guild)
             self.tree.add_command(debugcheck, guild=guild)
             self.tree.add_command(botcmds, guild=guild)
             await self.tree.sync(guild=guild)
