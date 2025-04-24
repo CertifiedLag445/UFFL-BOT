@@ -224,7 +224,7 @@ class FootballFusionBot(commands.Bot):
             self.tree.add_command(team_dashboard, guild=guild)
             self.tree.add_command(submit_stats, guild=guild)
             self.tree.add_command(stats_lb, guild=guild)
-            self.tree.add_command(import_game_images, guild=guild)
+            self.tree.add_command(import_from_image, guild=guild)
             self.tree.add_command(debugcheck, guild=guild)
             self.tree.add_command(botcmds, guild=guild)
             await self.tree.sync(guild=guild)
@@ -1752,26 +1752,21 @@ async def stats_lb(interaction: discord.Interaction, position: str, stat_categor
 
     await interaction.response.send_message(embed=embed, ephemeral=False)
 
-@bot.tree.command(name="import_game_images", description="Attach stat screenshots to import player stats.")
-async def import_game_images(interaction: discord.Interaction):
-    allowed_roles = {"Founder", "Commissioners"}
-    if not any(role.name in allowed_roles for role in interaction.user.roles):
-        await interaction.response.send_message("❌ You don’t have permission to use this command.", ephemeral=True)
-        return
-
-    if not interaction.attachments or len(interaction.attachments) == 0:
-        await interaction.response.send_message("❌ You must attach stat images to this command.", ephemeral=True)
+@bot.tree.context_menu(name="Import Stats From Screenshot")
+async def import_from_image(interaction: discord.Interaction, message: discord.Message):
+    attachments = message.attachments
+    if not attachments:
+        await interaction.response.send_message("❌ No images found on that message.", ephemeral=True)
         return
 
     await interaction.response.defer(ephemeral=True)
 
     results = {}
-    for image in interaction.attachments:
+    for image in attachments:
         try:
             img_bytes = await image.read()
             img = Image.open(io.BytesIO(img_bytes)).convert("L")
             img = img.point(lambda p: 255 if p > 160 else 0)
-
             text = pytesseract.image_to_string(img)
             lines = [line.strip() for line in text.split("\n") if line.strip()]
             category = detect_stat_category(lines)
@@ -1795,7 +1790,6 @@ async def import_game_images(interaction: discord.Interaction):
         await interaction.followup.send("❌ No valid stats detected in the uploaded images.", ephemeral=True)
         return
 
-
     embeds = []
     for position, players in results.items():
         embed = discord.Embed(title=f"📊 {position} Stats", color=discord.Color.green())
@@ -1804,39 +1798,12 @@ async def import_game_images(interaction: discord.Interaction):
             embed.add_field(name=player["name"], value="\n".join(lines), inline=False)
         embeds.append(embed)
 
-    await interaction.followup.send(content="✅ Review the stats below. Click confirm to save.", embeds=embeds, view=ConfirmImportView(results), ephemeral=True)
+    await interaction.followup.send(
+        content="✅ Review the stats below. You can now manually submit or track them.",
+        embeds=embeds,
+        ephemeral=True
+    )
 
-class ConfirmImportView(discord.ui.View):
-    def __init__(self, results):
-        super().__init__(timeout=90)
-        self.results = results
-
-    @discord.ui.button(label="✅ Confirm Save", style=discord.ButtonStyle.green)
-    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        try:
-            with open("uffl_player_stats.json", "r") as f:
-                data = json.load(f)
-        except:
-            data = {}
-
-        for position, players in self.results.items():
-            if position not in data:
-                data[position] = {}
-
-            for player in players:
-                name = player["name"]
-                stats = player["stats"]
-                user_key = find_or_create_player_id(data[position], name)
-
-                if user_key not in data[position]:
-                    data[position][user_key] = {"name": name, "games": []}
-
-                data[position][user_key]["games"].append(stats)
-
-        with open("uffl_player_stats.json", "w") as f:
-            json.dump(data, f, indent=4)
-
-        await interaction.response.edit_message(content="✅ Stats saved successfully!", embeds=[], view=None)
 
 def find_or_create_player_id(player_data, name):
     for uid, pdata in player_data.items():
