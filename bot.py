@@ -1813,16 +1813,19 @@ def find_or_create_player_id(player_data, name):
 
 def detect_stat_category(lines):
     categories = {
-        "Passer": ["Comp/Att", "Passer Rating", "Yards", "TDs", "INTs"],
-        "Runner": ["Misses", "Yards", "Attempts", "Long"],
-        "Receiver": ["Targets", "Catches", "YAC", "INTs Allowed"],
-        "Corner": ["Deny Rate", "Swats", "Comp Allowed", "INTs"],
-        "Defender": ["Tackles", "Misses", "Sacks", "Safeties", "FF", "FR"],
-        "Kicker": ["Good/Att", "Longest", "47+"]
+        "Passer": ["Comp", "Att", "TD", "INT", "Rating", "Yards"],
+        "Runner": ["Misses", "Attempts", "Yards", "Long"],
+        "Receiver": ["Catches", "Targets", "TD", "YAC", "INT", "Allowed", "Yards", "Long"],
+        "Corner": ["Deny", "Swats", "INT", "CompAllowed", "Rating"],
+        "Defender": ["Tackles", "Misses", "Sacks", "Safeties", "ForceFumb", "Rec.Fumb"],
+        "Kicker": ["Good", "Att", "Long", ">47"]
     }
+
     for category, keywords in categories.items():
-        if any(any(kw.lower() in line.lower() for kw in keywords) for line in lines):
-            return category
+        for line in lines:
+            for kw in keywords:
+                if kw.lower() in line.lower().replace(" ", ""):  # fuzzier matching
+                    return category
     return None
 
 
