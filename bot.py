@@ -1766,7 +1766,7 @@ async def Import_Stats(interaction: discord.Interaction, message: discord.Messag
         try:
             img_bytes = await image.read()
             img = Image.open(io.BytesIO(img_bytes)).convert("L")
-            img = img.point(lambda p: 255 if p > 160 else 0)
+            img = img.point(lambda p: 255 if p > 160 else 0)  # binarize
             text = pytesseract.image_to_string(img)
             lines = [line.strip() for line in text.split("\n") if line.strip()]
             category = detect_stat_category(lines)
@@ -1805,6 +1805,56 @@ async def Import_Stats(interaction: discord.Interaction, message: discord.Messag
     )
 
 
+def parse_stat_lines(lines, category):
+    players = []
+    header_row = None
+    column_names = []
+
+    # Step 1: Find the header
+    for line in lines:
+        if line.lower().startswith("player"):
+            header_row = line
+            break
+
+    if not header_row:
+        return []
+
+    # Step 2: Parse header to get stat names
+    raw_headers = re.split(r'\s{2,}|\t+', header_row.strip())
+    if not raw_headers or raw_headers[0].lower() != "player":
+        return []
+
+    column_names = raw_headers[1:]  # Skip "Player"
+
+    # Step 3: Parse rows that follow
+    parsing = False
+    for line in lines:
+        if line == header_row:
+            parsing = True
+            continue
+        if not parsing:
+            continue
+
+        parts = re.split(r'\s{2,}|\t+', line.strip())
+        if len(parts) < 2:
+            continue
+
+        name = parts[0]
+        stat_values = parts[1:]
+
+        stats = {}
+        for i, val in enumerate(stat_values):
+            if i < len(column_names):
+                stats[column_names[i]] = val
+
+        players.append({
+            "name": name,
+            "stats": stats
+        })
+
+    return players
+
+
 def find_or_create_player_id(player_data, name):
     for uid, pdata in player_data.items():
         if pdata["name"].lower() == name.lower():
@@ -1827,6 +1877,7 @@ def detect_stat_category(lines):
                 if kw.lower() in line.lower().replace(" ", ""):  # fuzzier matching
                     return category
     return None
+
 
 
 @bot.tree.command(name="botcmds", description="DMs you a list of all bot commands.")
