@@ -1753,27 +1753,24 @@ async def stats_lb(interaction: discord.Interaction, position: str, stat_categor
     await interaction.response.send_message(embed=embed, ephemeral=False)
 
 @bot.tree.command(name="import_game_images", description="Attach stat screenshots to import player stats.")
-@app_commands.describe(
-    images="Attach 1–10 stat screenshots (each image = 1 position)"
-)
-async def import_game_images(interaction: discord.Interaction, images: list[discord.Attachment]):
+async def import_game_images(interaction: discord.Interaction):
     allowed_roles = {"Founder", "Commissioners"}
     if not any(role.name in allowed_roles for role in interaction.user.roles):
         await interaction.response.send_message("❌ You don’t have permission to use this command.", ephemeral=True)
         return
 
-    if not images or len(images) == 0:
+    if not interaction.attachments or len(interaction.attachments) == 0:
         await interaction.response.send_message("❌ You must attach stat images to this command.", ephemeral=True)
         return
 
     await interaction.response.defer(ephemeral=True)
 
     results = {}
-    for image in images:
+    for image in interaction.attachments:
         try:
             img_bytes = await image.read()
             img = Image.open(io.BytesIO(img_bytes)).convert("L")
-            img = img.point(lambda p: 255 if p > 160 else 0)  # binarize
+            img = img.point(lambda p: 255 if p > 160 else 0)
 
             text = pytesseract.image_to_string(img)
             lines = [line.strip() for line in text.split("\n") if line.strip()]
@@ -1797,6 +1794,7 @@ async def import_game_images(interaction: discord.Interaction, images: list[disc
     if not results:
         await interaction.followup.send("❌ No valid stats detected in the uploaded images.", ephemeral=True)
         return
+
 
     embeds = []
     for position, players in results.items():
