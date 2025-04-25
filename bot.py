@@ -1,4 +1,4 @@
-import os
+    import os
 import json
 import time
 import datetime
@@ -1773,8 +1773,13 @@ async def Import_Stats(interaction: discord.Interaction, message: discord.Messag
             img = Image.open(io.BytesIO(img_bytes)).convert("L")
             img = img.point(lambda p: 255 if p > 160 else 0)  # binarize
             text = pytesseract.image_to_string(img)
+            await interaction.followup.send(
+                content=f"🧪 OCR extracted text:\n```{text[:1800]}```",
+                ephemeral=True
+            )
             lines = [line.strip() for line in text.split("\n") if line.strip()]
             category = detect_stat_category(lines)
+
 
             if not category:
                 continue
