@@ -16,7 +16,12 @@ pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
 from PIL import Image
 import io
 import re
+import platform
 
+if platform.system() == "Windows":
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+else:
+    pytesseract.pytesseract.tesseract_cmd = r"/usr/bin/tesseract"
 
 
 GUILD_ID = 1307397558787899515  # Define GUILD_ID at the top!
