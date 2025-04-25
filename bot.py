@@ -1766,43 +1766,37 @@ async def Import_Stats(interaction: discord.Interaction, message: discord.Messag
 
     await interaction.response.defer(ephemeral=True)
 
-    results = {}  # ← this line MUST be indented
+    results = {}
     for image in attachments:
-    try:
-        img_bytes = await image.read()
-        img = Image.open(io.BytesIO(img_bytes)).convert("L")
+        try:
+            img_bytes = await image.read()
+            img = Image.open(io.BytesIO(img_bytes)).convert("L")
+            img = img.resize((img.width * 2, img.height * 2), Image.LANCZOS)
+            img = img.point(lambda p: 255 if p > 160 else 0)
 
-        # Resize for better OCR accuracy
-        img = img.resize((img.width * 2, img.height * 2), Image.LANCZOS)
+            text = pytesseract.image_to_string(img)
 
-        # Binarize (convert to pure black & white)
-        img = img.point(lambda p: 255 if p > 160 else 0)
+            await interaction.followup.send(
+                content=f"🧪 OCR extracted text:\n```{text[:1800]}```",
+                ephemeral=True
+            )
 
-        # Extract text using Tesseract
-        text = pytesseract.image_to_string(img)
+            lines = [line.strip() for line in text.split("\n") if line.strip()]
+            category = detect_stat_category(lines)
+            if not category:
+                continue
 
-        # Send raw OCR output for debugging
-        await interaction.followup.send(
-            content=f"🧪 OCR extracted text:\n```{text[:1800]}```",
-            ephemeral=True
-        )
+            parsed = parse_stat_lines(lines, category)
+            if not parsed:
+                continue
 
-        lines = [line.strip() for line in text.split("\n") if line.strip()]
-        category = detect_stat_category(lines)
-        if not category:
+            if category not in results:
+                results[category] = []
+            results[category].extend(parsed)
+
+        except Exception as e:
+            print(f"[IMPORT ERROR]: {e}")
             continue
-
-        parsed = parse_stat_lines(lines, category)
-        if not parsed:
-            continue
-
-        if category not in results:
-            results[category] = []
-        results[category].extend(parsed)
-
-    except Exception as e:
-        print(f"[IMPORT ERROR]: {e}")
-        continue
 
     if not results:
         await interaction.followup.send("❌ No valid stats detected in the uploaded images.", ephemeral=True)
