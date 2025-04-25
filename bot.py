@@ -1766,8 +1766,8 @@ async def Import_Stats(interaction: discord.Interaction, message: discord.Messag
 
     await interaction.response.defer(ephemeral=True)
 
-   results = {}
-for image in attachments:
+    results = {}  # ← this line MUST be indented
+    for image in attachments:
     try:
         img_bytes = await image.read()
         img = Image.open(io.BytesIO(img_bytes)).convert("L")
