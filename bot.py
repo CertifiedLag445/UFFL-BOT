@@ -1766,35 +1766,43 @@ async def Import_Stats(interaction: discord.Interaction, message: discord.Messag
 
     await interaction.response.defer(ephemeral=True)
 
-    results = {}
-    for image in attachments:
-        try:
-            img_bytes = await image.read()
-            img = Image.open(io.BytesIO(img_bytes)).convert("L")
-            img = img.point(lambda p: 255 if p > 160 else 0)  # binarize
-            text = pytesseract.image_to_string(img)
-            await interaction.followup.send(
-                content=f"🧪 OCR extracted text:\n```{text[:1800]}```",
-                ephemeral=True
-            )
-            lines = [line.strip() for line in text.split("\n") if line.strip()]
-            category = detect_stat_category(lines)
+   results = {}
+for image in attachments:
+    try:
+        img_bytes = await image.read()
+        img = Image.open(io.BytesIO(img_bytes)).convert("L")
 
+        # Resize for better OCR accuracy
+        img = img.resize((img.width * 2, img.height * 2), Image.LANCZOS)
 
-            if not category:
-                continue
+        # Binarize (convert to pure black & white)
+        img = img.point(lambda p: 255 if p > 160 else 0)
 
-            parsed = parse_stat_lines(lines, category)
-            if not parsed:
-                continue
+        # Extract text using Tesseract
+        text = pytesseract.image_to_string(img)
 
-            if category not in results:
-                results[category] = []
-            results[category].extend(parsed)
+        # Send raw OCR output for debugging
+        await interaction.followup.send(
+            content=f"🧪 OCR extracted text:\n```{text[:1800]}```",
+            ephemeral=True
+        )
 
-        except Exception as e:
-            print(f"[IMPORT ERROR]: {e}")
+        lines = [line.strip() for line in text.split("\n") if line.strip()]
+        category = detect_stat_category(lines)
+        if not category:
             continue
+
+        parsed = parse_stat_lines(lines, category)
+        if not parsed:
+            continue
+
+        if category not in results:
+            results[category] = []
+        results[category].extend(parsed)
+
+    except Exception as e:
+        print(f"[IMPORT ERROR]: {e}")
+        continue
 
     if not results:
         await interaction.followup.send("❌ No valid stats detected in the uploaded images.", ephemeral=True)
@@ -1817,52 +1825,32 @@ async def Import_Stats(interaction: discord.Interaction, message: discord.Messag
 
 def parse_stat_lines(lines, category):
     players = []
-    header_row = None
-    column_names = []
+    header_found = False
+    headers = []
 
-    # Step 1: Find the header
     for line in lines:
-        if line.lower().startswith("player"):
-            header_row = line
-            break
-
-    if not header_row:
-        return []
-
-    # Step 2: Parse header to get stat names
-    raw_headers = re.split(r'\s{2,}|\t+', header_row.strip())
-    if not raw_headers or raw_headers[0].lower() != "player":
-        return []
-
-    column_names = raw_headers[1:]  # Skip "Player"
-
-    # Step 3: Parse rows that follow
-    parsing = False
-    for line in lines:
-        if line == header_row:
-            parsing = True
-            continue
-        if not parsing:
+        if not header_found and line.lower().startswith("player"):
+            headers = re.split(r'\s{2,}|\t+', line.strip())[1:]
+            header_found = True
             continue
 
-        parts = re.split(r'\s{2,}|\t+', line.strip())
-        if len(parts) < 2:
-            continue
+        if header_found:
+            parts = re.split(r'\s{2,}|\t+', line.strip())
+            if len(parts) < 2:
+                continue
 
-        name = parts[0]
-        stat_values = parts[1:]
+            name = parts[0]
+            stat_values = parts[1:]
+            stats = {}
 
-        stats = {}
-        for i, val in enumerate(stat_values):
-            if i < len(column_names):
-                stats[column_names[i]] = val
+            for i, value in enumerate(stat_values):
+                if i < len(headers):
+                    stats[headers[i]] = value
 
-        players.append({
-            "name": name,
-            "stats": stats
-        })
+            players.append({"name": name, "stats": stats})
 
     return players
+
 
 
 def find_or_create_player_id(player_data, name):
@@ -1872,21 +1860,21 @@ def find_or_create_player_id(player_data, name):
     return str(max([int(uid) for uid in player_data.keys()] + [100000]) + 1)
 
 def detect_stat_category(lines):
-    categories = {
-        "Passer": ["Comp", "Att", "TD", "INT", "Rating", "Yards"],
-        "Runner": ["Misses", "Attempts", "Yards", "Long"],
-        "Receiver": ["Catches", "Targets", "TD", "YAC", "INT", "Allowed", "Yards", "Long"],
-        "Corner": ["Deny", "Swats", "INT", "CompAllowed", "Rating"],
-        "Defender": ["Tackles", "Misses", "Sacks", "Safeties", "ForceFumb", "Rec.Fumb"],
-        "Kicker": ["Good", "Att", "Long", ">47"]
-    }
-
-    for category, keywords in categories.items():
-        for line in lines:
-            for kw in keywords:
-                if kw.lower() in line.lower().replace(" ", ""):  # fuzzier matching
-                    return category
+    lines_joined = " ".join(lines).lower()
+    if "comp" in lines_joined and "int" in lines_joined and "td" in lines_joined:
+        return "Passer"
+    if "yac" in lines_joined and "targets" in lines_joined:
+        return "Receiver"
+    if "miss/att" in lines_joined and "attempts" in lines_joined:
+        return "Runner"
+    if "deny" in lines_joined and "db rating" in lines_joined:
+        return "Corner"
+    if "tackles" in lines_joined and "sacks" in lines_joined:
+        return "Defender"
+    if "good" in lines_joined and "long" in lines_joined:
+        return "Kicker"
     return None
+
 
 
 
