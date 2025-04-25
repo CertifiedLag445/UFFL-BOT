@@ -1757,6 +1757,36 @@ async def stats_lb(interaction: discord.Interaction, position: str, stat_categor
 
     await interaction.response.send_message(embed=embed, ephemeral=False)
 
+class ConfirmStatsView(discord.ui.View):
+    def __init__(self, results):
+        super().__init__(timeout=60)
+        self.results = results
+
+    @discord.ui.button(label="✅ Save Stats", style=discord.ButtonStyle.green)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        try:
+            with open("uffl_player_stats.json", "r") as f:
+                all_data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            all_data = {}
+
+        for position, players in self.results.items():
+            if position not in all_data:
+                all_data[position] = []
+            all_data[position].extend(players)
+
+        with open("uffl_player_stats.json", "w") as f:
+            json.dump(all_data, f, indent=2)
+
+        await interaction.response.send_message("📁 Stats saved to `uffl_player_stats.json`!", ephemeral=True)
+        self.stop()
+
+    @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.red)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("Cancelled.", ephemeral=True)
+        self.stop()
+
+
 @bot.tree.context_menu(name="Import Stats")
 async def Import_Stats(interaction: discord.Interaction, message: discord.Message):
     attachments = message.attachments
@@ -1765,23 +1795,20 @@ async def Import_Stats(interaction: discord.Interaction, message: discord.Messag
         return
 
     await interaction.response.defer(ephemeral=True)
-
     results = {}
+
     for image in attachments:
         try:
             img_bytes = await image.read()
             img = Image.open(io.BytesIO(img_bytes)).convert("L")
             img = img.resize((img.width * 2, img.height * 2), Image.LANCZOS)
             img = img.point(lambda p: 255 if p > 160 else 0)
-
             text = pytesseract.image_to_string(img)
 
-            await interaction.followup.send(
-                content=f"🧪 OCR extracted text:\n```{text[:1800]}```",
-                ephemeral=True
-            )
-
             lines = [line.strip() for line in text.split("\n") if line.strip()]
+            if not any("player" in line.lower() for line in lines):
+                continue
+
             category = detect_stat_category(lines)
             if not category:
                 continue
@@ -1810,11 +1837,14 @@ async def Import_Stats(interaction: discord.Interaction, message: discord.Messag
             embed.add_field(name=player["name"], value="\n".join(lines), inline=False)
         embeds.append(embed)
 
+    view = ConfirmStatsView(results)
     await interaction.followup.send(
-        content="✅ Review the stats below. You can now manually submit or track them.",
+        content="✅ Review the stats below and confirm to save.",
         embeds=embeds,
+        view=view,
         ephemeral=True
     )
+
 
 
 def parse_stat_lines(lines, category):
@@ -1830,7 +1860,7 @@ def parse_stat_lines(lines, category):
 
         if header_found:
             parts = re.split(r'\s{2,}|\t+', line.strip())
-            if len(parts) < 2:
+            if len(parts) < 4:
                 continue
 
             name = parts[0]
