@@ -1890,21 +1890,19 @@ def find_or_create_player_id(player_data, name):
 
 def detect_stat_category(lines):
     lines_joined = " ".join(lines).lower()
-    if "comp" in lines_joined and "int" in lines_joined and "td" in lines_joined:
+    if ("comp" in lines_joined or "compiatt" in lines_joined) and ("int" in lines_joined or "ints" in lines_joined) and ("td" in lines_joined or "tds" in lines_joined):
         return "Passer"
-    if "yac" in lines_joined and "targets" in lines_joined:
+    if "yac" in lines_joined and ("target" in lines_joined or "targets" in lines_joined):
         return "Receiver"
-    if "miss/att" in lines_joined and "attempts" in lines_joined:
+    if ("miss" in lines_joined or "misses" in lines_joined) and ("att" in lines_joined or "attempts" in lines_joined):
         return "Runner"
-    if "deny" in lines_joined and "db rating" in lines_joined:
+    if ("deny" in lines_joined or "denyrate" in lines_joined) and ("rating" in lines_joined or "db rating" in lines_joined):
         return "Corner"
-    if "tackles" in lines_joined and "sacks" in lines_joined:
+    if "tackles" in lines_joined and ("sack" in lines_joined or "sacks" in lines_joined):
         return "Defender"
-    if "good" in lines_joined and "long" in lines_joined:
+    if ("good" in lines_joined or "goodatt" in lines_joined) and ("long" in lines_joined):
         return "Kicker"
     return None
-
-
 
 
 @bot.tree.command(name="botcmds", description="DMs you a list of all bot commands.")
