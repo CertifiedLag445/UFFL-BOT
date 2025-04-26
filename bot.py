@@ -1820,42 +1820,38 @@ async def Import_Stats(interaction: Interaction, message: discord.Message):
     await interaction.response.defer(ephemeral=True)
     all_results: dict[str, list[tuple[str, dict]]] = {}
 
-    OCR_CFG = "--oem 3 --psm 6 " + \
-              "-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%./()"
+    OCR_CFG = "--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%./()"
 
     for att in attachments:
         img_bytes = await att.read()
         img = Image.open(io.BytesIO(img_bytes)).convert("L")
-        img = img.resize((img.width*2, img.height*2), Image.LANCZOS)
-        bw = img.point(lambda p: 255 if p>128 else 0)
+        img = img.resize((img.width * 2, img.height * 2), Image.LANCZOS)
+        bw = img.point(lambda p: 255 if p > 128 else 0)
 
-        w,h = bw.size
-        table_img = bw.crop((int(w*0.1), int(h*0.2), int(w*0.9), int(h*0.75)))
+        w, h = bw.size
+        table_img = bw.crop((int(w * 0.1), int(h * 0.2), int(w * 0.9), int(h * 0.75)))
         text = pytesseract.image_to_string(table_img, config=OCR_CFG)
         raw_lines = [l for l in text.splitlines() if l.strip()]
 
-        # split into player-blocks
         blocks, curr = [], []
         for line in raw_lines:
             if curr and re.match(r"^\d+\.|^[A-Z]", line):
-                blocks.append(curr); curr = [line]
+                blocks.append(curr)
+                curr = [line]
             else:
                 curr.append(line)
-        if curr: blocks.append(curr)
+        if curr:
+            blocks.append(curr)
 
-        # parse & clean
         for blk in blocks:
             player, stats = parse_block(blk)
             stats = clean_stats(stats)
-            if (player 
-                and all(stats[k] is not None for k in stats)
-                and re.match(r"^\d+$", stats["Yards"])):
+            if player and all(stats[k] is not None for k in stats) and re.match(r"^\d+$", stats["Yards"]):
                 cat = detect_stat_category(blk) or "Unknown"
                 all_results.setdefault(cat, []).append((player, stats))
 
     if not all_results:
         return await interaction.followup.send("❌ No valid stat lines found.", ephemeral=True)
-
 
     embeds = []
     for cat, rows in all_results.items():
@@ -1867,15 +1863,14 @@ async def Import_Stats(interaction: Interaction, message: discord.Message):
             embed.set_footer(text=f"...and {len(rows)-5} more rows")
         embeds.append(embed)
 
-await interaction.followup.send(embeds=embeds, ephemeral=True)
+    await interaction.followup.send(embeds=embeds, ephemeral=True)
 
-view = ConfirmStatsView(all_results)
-await interaction.followup.send(
-    "✅ Preview above. Click **Save Stats** to write to `uffl_player_stats.json`, or **Cancel**.",
-    view=view,
-    ephemeral=True
-)
-
+    view = ConfirmStatsView(all_results)
+    await interaction.followup.send(
+        "✅ Preview above. Click **Save Stats** to write to `uffl_player_stats.json`, or **Cancel**.",
+        view=view,
+        ephemeral=True
+    )
 
 
 def parse_stat_lines(lines, category):
