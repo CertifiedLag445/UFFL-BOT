@@ -18,6 +18,30 @@ import io
 import re
 import platform
 
+def parse_block(block_lines: list[str]) -> tuple[str, dict]:
+    raw_name = re.sub(r"^\d+\.\s*", "", block_lines[0]).lstrip(".").strip()
+    player = raw_name
+    keys = ["PasserRatingV","Comp/Att","TDs","Ints","Sacks","Yards","Long"]
+    stats = {}
+    text = "\n".join(block_lines)
+    for key in keys:
+        m = re.search(rf"{re.escape(key)}\s*:\s*([^\n]+)", text)
+        stats[key] = m.group(1).strip() if m else None
+    return player, stats
+
+def clean_stats(stats: dict) -> dict:
+    for num_key in ("TDs","Ints","Sacks","Yards","Long"):
+        v = stats.get(num_key) or ""
+        if re.fullmatch(r"[^\d]+", v):
+            stats[num_key] = "0"
+    raw_long = stats.get("Long","")
+    nums = re.findall(r"\d+", raw_long)
+    if len(nums) >= 2:
+        stats["Yards"], stats["Long"] = nums[0], nums[1]
+    if stats.get("TDs","").find("%") != -1 and not stats.get("Comp/Att"):
+        stats["Comp/Att"], stats["TDs"] = stats["TDs"], stats["Ints"]
+    return stats
+
 if platform.system() == "Windows":
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 else:
@@ -1788,61 +1812,67 @@ class ConfirmStatsView(discord.ui.View):
 
 
 @bot.tree.context_menu(name="Import Stats")
-async def Import_Stats(interaction: discord.Interaction, message: discord.Message):
+async def Import_Stats(interaction: Interaction, message: discord.Message):
     attachments = message.attachments
     if not attachments:
         return await interaction.response.send_message("❌ No images found.", ephemeral=True)
 
     await interaction.response.defer(ephemeral=True)
+    all_results: dict[str, list[tuple[str, dict]]] = {}
 
-    for image in attachments:
-        # 1) Read & preprocess
-        img_bytes = await image.read()
+    OCR_CFG = "--oem 3 --psm 6 " + \
+              "-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%./()"
+
+    for att in attachments:
+        img_bytes = await att.read()
         img = Image.open(io.BytesIO(img_bytes)).convert("L")
         img = img.resize((img.width*2, img.height*2), Image.LANCZOS)
+        bw = img.point(lambda p: 255 if p>128 else 0)
 
-        # 2) Crop to centre panel (tweak fractions if needed)
-        w, h = img.size
-        left, top    = int(w*0.10), int(h*0.20)
-        right, bottom = int(w*0.90), int(h*0.75)
-        table_img = img.crop((left, top, right, bottom))
+        w,h = bw.size
+        table_img = bw.crop((int(w*0.1), int(h*0.2), int(w*0.9), int(h*0.75)))
+        text = pytesseract.image_to_string(table_img, config=OCR_CFG)
+        raw_lines = [l for l in text.splitlines() if l.strip()]
 
-        # 3) OCR with whitelist for alphanumerics + %./()
-        cfg = "--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%./()"
-        text = pytesseract.image_to_string(table_img, config=cfg)
+        # split into player-blocks
+        blocks, curr = [], []
+        for line in raw_lines:
+            if curr and re.match(r"^\d+\.|^[A-Z]", line):
+                blocks.append(curr); curr = [line]
+            else:
+                curr.append(line)
+        if curr: blocks.append(curr)
 
-        # 4) Split lines & locate the header row
-        lines = [l for l in text.splitlines() if l.strip()]
-        for i, line in enumerate(lines):
-            if "Player" in line:
-                header_line = line
-                data_lines  = lines[i+1:]
-                break
-        else:
-            await interaction.followup.send(f"❌ No header row found in `{image.filename}`.", ephemeral=True)
-            continue
+        # parse & clean
+        for blk in blocks:
+            player, stats = parse_block(blk)
+            stats = clean_stats(stats)
+            if (player 
+                and all(stats[k] is not None for k in stats)
+                and re.match(r"^\d+$", stats["Yards"])):
+                cat = detect_stat_category(blk) or "Unknown"
+                all_results.setdefault(cat, []).append((player, stats))
 
-        # 5) Build a table of dicts
-        headers = re.split(r'\s+', header_line.strip())
-        rows = []
-        for row in data_lines:
-            parts = re.split(r'\s+', row.strip(), maxsplit=len(headers)-1)
-            if len(parts) == len(headers):
-                rows.append(dict(zip(headers, parts)))
+    if not all_results:
+        return await interaction.followup.send("❌ No valid stat lines found.", ephemeral=True)
 
-        if not rows:
-            await interaction.followup.send(f"❌ No data rows parsed in `{image.filename}`.", ephemeral=True)
-            continue
-
-        # 6) Send an embed for this position
-        #    Derive the position name from filename or first header
-        position_name = headers[1]  # e.g. "Passer" or "Comp/Att"
-        embed = discord.Embed(title=f"📊 {position_name} Stats", color=discord.Color.blue())
-        for r in rows:
-            desc = "\n".join(f"**{k}**: {v}" for k,v in r.items() if k!="Player")
-            embed.add_field(name=r["Player"], value=desc, inline=False)
-
+    # preview
+    for cat, rows in all_results.items():
+        embed = Embed(title=f"📊 {cat} Preview", color=Color.blue())
+        for player, stats in rows[:5]:
+            desc = "\n".join(f"{k}: {v}" for k,v in stats.items())
+            embed.add_field(name=player, value=desc, inline=False)
+        if len(rows)>5:
+            embed.set_footer(text=f"...and {len(rows)-5} more rows")
         await interaction.followup.send(embed=embed, ephemeral=True)
+
+    # confirm save
+    view = ConfirmStatsView(all_results)
+    await interaction.followup.send(
+        "✅ Preview above. Click **Save Stats** to write to `uffl_player_stats.json`, or **Cancel**.",
+        view=view,
+        ephemeral=True
+    )
 
 
 def parse_stat_lines(lines, category):
@@ -1872,7 +1902,6 @@ def parse_stat_lines(lines, category):
             players.append({"name": name, "stats": stats})
 
     return players
-
 
 
 def find_or_create_player_id(player_data, name):
