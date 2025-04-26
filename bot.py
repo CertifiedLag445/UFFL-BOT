@@ -1804,7 +1804,7 @@ async def Import_Stats(interaction: discord.Interaction, message: discord.Messag
             img = img.resize((img.width * 2, img.height * 2), Image.LANCZOS)
             img = img.point(lambda p: 255 if p > 160 else 0)
             text = pytesseract.image_to_string(img)
-
+            print("[OCR RAW OUTPUT]\n" + text + "\n— end OCR —")
             lines = [line.strip() for line in text.split("\n") if line.strip()]
             if not any(
                 re.search(r"(player|catch|target|comp|att|td|int|good|miss|yards|tackles|swat|deny|long|rating)", line.lower())
