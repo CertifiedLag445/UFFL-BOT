@@ -1791,64 +1791,58 @@ class ConfirmStatsView(discord.ui.View):
 async def Import_Stats(interaction: discord.Interaction, message: discord.Message):
     attachments = message.attachments
     if not attachments:
-        await interaction.response.send_message("❌ No images found on that message.", ephemeral=True)
-        return
+        return await interaction.response.send_message("❌ No images found.", ephemeral=True)
 
     await interaction.response.defer(ephemeral=True)
-    results = {}
 
     for image in attachments:
-        try:
-            img_bytes = await image.read()
-            img = Image.open(io.BytesIO(img_bytes)).convert("L")
-            img = img.resize((img.width * 2, img.height * 2), Image.LANCZOS)
-            img = img.point(lambda p: 255 if p > 160 else 0)
-            text = pytesseract.image_to_string(img)
-            print("[OCR RAW OUTPUT]\n" + text + "\n— end OCR —")
-            lines = [line.strip() for line in text.split("\n") if line.strip()]
-            if not any(
-                re.search(r"(player|name|rec|catch|tgt|target|comp|att|td|int|yds|yards|tackles|long)", line.lower())
-                for line in lines
-            ):
-                continue
+        # 1) Read & preprocess
+        img_bytes = await image.read()
+        img = Image.open(io.BytesIO(img_bytes)).convert("L")
+        img = img.resize((img.width*2, img.height*2), Image.LANCZOS)
 
+        # 2) Crop to centre panel (tweak fractions if needed)
+        w, h = img.size
+        left, top    = int(w*0.10), int(h*0.20)
+        right, bottom = int(w*0.90), int(h*0.75)
+        table_img = img.crop((left, top, right, bottom))
 
-            category = detect_stat_category(lines)
-            if not category:
-                continue
+        # 3) OCR with whitelist for alphanumerics + %./()
+        cfg = "--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%./()"
+        text = pytesseract.image_to_string(table_img, config=cfg)
 
-            parsed = parse_stat_lines(lines, category)
-            if not parsed:
-                continue
-
-            if category not in results:
-                results[category] = []
-            results[category].extend(parsed)
-
-        except Exception as e:
-            print(f"[IMPORT ERROR]: {e}")
+        # 4) Split lines & locate the header row
+        lines = [l for l in text.splitlines() if l.strip()]
+        for i, line in enumerate(lines):
+            if "Player" in line:
+                header_line = line
+                data_lines  = lines[i+1:]
+                break
+        else:
+            await interaction.followup.send(f"❌ No header row found in `{image.filename}`.", ephemeral=True)
             continue
 
-    if not results:
-        await interaction.followup.send("❌ No valid stats detected in the uploaded images.", ephemeral=True)
-        return
+        # 5) Build a table of dicts
+        headers = re.split(r'\s+', header_line.strip())
+        rows = []
+        for row in data_lines:
+            parts = re.split(r'\s+', row.strip(), maxsplit=len(headers)-1)
+            if len(parts) == len(headers):
+                rows.append(dict(zip(headers, parts)))
 
-    embeds = []
-    for position, players in results.items():
-        embed = discord.Embed(title=f"📊 {position} Stats", color=discord.Color.green())
-        for player in players:
-            lines = [f"`{k}`: {v}" for k, v in player["stats"].items()]
-            embed.add_field(name=player["name"], value="\n".join(lines), inline=False)
-        embeds.append(embed)
+        if not rows:
+            await interaction.followup.send(f"❌ No data rows parsed in `{image.filename}`.", ephemeral=True)
+            continue
 
-    view = ConfirmStatsView(results)
-    await interaction.followup.send(
-        content="✅ Review the stats below and confirm to save.",
-        embeds=embeds,
-        view=view,
-        ephemeral=True
-    )
+        # 6) Send an embed for this position
+        #    Derive the position name from filename or first header
+        position_name = headers[1]  # e.g. "Passer" or "Comp/Att"
+        embed = discord.Embed(title=f"📊 {position_name} Stats", color=discord.Color.blue())
+        for r in rows:
+            desc = "\n".join(f"**{k}**: {v}" for k,v in r.items() if k!="Player")
+            embed.add_field(name=r["Player"], value=desc, inline=False)
 
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 def parse_stat_lines(lines, category):
