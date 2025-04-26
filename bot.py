@@ -1806,8 +1806,12 @@ async def Import_Stats(interaction: discord.Interaction, message: discord.Messag
             text = pytesseract.image_to_string(img)
 
             lines = [line.strip() for line in text.split("\n") if line.strip()]
-            if not any(re.search(r"\bplayer\b", line.lower()) or re.search(r"\b(catches|ints|tackles|comp/att|good/att|miss/att)\b", line.lower()) for line in lines):
+            if not any(
+                re.search(r"(player|catch|target|comp|att|td|int|good|miss|yards|tackles|swat|deny|long|rating)", line.lower())
+                for line in lines
+            ):
                 continue
+
 
 
             category = detect_stat_category(lines)
