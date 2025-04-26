@@ -1856,23 +1856,26 @@ async def Import_Stats(interaction: Interaction, message: discord.Message):
     if not all_results:
         return await interaction.followup.send("❌ No valid stat lines found.", ephemeral=True)
 
-    # preview
+
+    embeds = []
     for cat, rows in all_results.items():
         embed = Embed(title=f"📊 {cat} Preview", color=Color.blue())
         for player, stats in rows[:5]:
-            desc = "\n".join(f"{k}: {v}" for k,v in stats.items())
+            desc = "\n".join(f"{k}: {v}" for k, v in stats.items())
             embed.add_field(name=player, value=desc, inline=False)
-        if len(rows)>5:
+        if len(rows) > 5:
             embed.set_footer(text=f"...and {len(rows)-5} more rows")
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        embeds.append(embed)
 
-    # confirm save
-    view = ConfirmStatsView(all_results)
-    await interaction.followup.send(
-        "✅ Preview above. Click **Save Stats** to write to `uffl_player_stats.json`, or **Cancel**.",
-        view=view,
-        ephemeral=True
-    )
+await interaction.followup.send(embeds=embeds, ephemeral=True)
+
+view = ConfirmStatsView(all_results)
+await interaction.followup.send(
+    "✅ Preview above. Click **Save Stats** to write to `uffl_player_stats.json`, or **Cancel**.",
+    view=view,
+    ephemeral=True
+)
+
 
 
 def parse_stat_lines(lines, category):
