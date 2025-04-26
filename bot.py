@@ -1807,11 +1807,10 @@ async def Import_Stats(interaction: discord.Interaction, message: discord.Messag
             print("[OCR RAW OUTPUT]\n" + text + "\n— end OCR —")
             lines = [line.strip() for line in text.split("\n") if line.strip()]
             if not any(
-                re.search(r"(player|catch|target|comp|att|td|int|good|miss|yards|tackles|swat|deny|long|rating)", line.lower())
+                re.search(r"(player|name|rec|catch|tgt|target|comp|att|td|int|yds|yards|tackles|long)", line.lower())
                 for line in lines
             ):
                 continue
-
 
 
             category = detect_stat_category(lines)
@@ -1859,12 +1858,12 @@ def parse_stat_lines(lines, category):
 
     for line in lines:
         if not header_found and re.search(r"\b(catches|ints|tds|tackles|good/att|miss/att|comp/att|targets|yards|yac|long)\b", line.lower()):
-            headers = re.split(r'\s{2,}|\t+', line.strip())[1:]  # skip first column = player
+            headers = re.split(r'\s+', line.strip())[1:]  # skip first column = player
             header_found = True
             continue
 
         if header_found:
-            parts = re.split(r'\s{2,}|\t+', line.strip())
+            parts = re.split(r'\s+', line.strip())
             if len(parts) < 4:
                 continue
 
