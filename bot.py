@@ -1830,7 +1830,16 @@ async def Import_Stats(interaction: Interaction, message: discord.Message):
 
         w, h = bw.size
         table_img = bw.crop((int(w * 0.1), int(h * 0.2), int(w * 0.9), int(h * 0.75)))
-        text = pytesseract.image_to_string(table_img, config=OCR_CFG)
+
+        try:
+            text = await asyncio.wait_for(
+                asyncio.to_thread(pytesseract.image_to_string, table_img, config=OCR_CFG),
+                timeout=5
+            )
+        except asyncio.TimeoutError:
+            print("❌ OCR timed out on an image. Skipping...")
+            continue
+
         raw_lines = [l for l in text.splitlines() if l.strip()]
 
         blocks, curr = [], []
@@ -1867,8 +1876,10 @@ async def Import_Stats(interaction: Interaction, message: discord.Message):
     await interaction.followup.send(
         content="✅ Preview below. Click **Save Stats** to write to `uffl_player_stats.json`, or **Cancel**.",
         embeds=embeds,
+        view=view,
         ephemeral=True
     )
+
 
 
 def parse_stat_lines(lines, category):
