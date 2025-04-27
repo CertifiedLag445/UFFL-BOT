@@ -1863,12 +1863,10 @@ async def Import_Stats(interaction: Interaction, message: discord.Message):
             embed.set_footer(text=f"...and {len(rows)-5} more rows")
         embeds.append(embed)
 
-    await interaction.followup.send(embeds=embeds, ephemeral=True)
-
     view = ConfirmStatsView(all_results)
     await interaction.followup.send(
-        "✅ Preview above. Click **Save Stats** to write to `uffl_player_stats.json`, or **Cancel**.",
-        view=view,
+        content="✅ Preview below. Click **Save Stats** to write to `uffl_player_stats.json`, or **Cancel**.",
+        embeds=embeds,
         ephemeral=True
     )
 
