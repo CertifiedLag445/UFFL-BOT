@@ -30,15 +30,15 @@ def parse_block(block_lines: list[str]) -> tuple[str, dict]:
     return player, stats
 
 def clean_stats(stats: dict) -> dict:
-    for num_key in ("TDs","Ints","Sacks","Yards","Long"):
+    for num_key in ("TDs", "Ints", "Sacks", "Yards", "Long"):
         v = stats.get(num_key) or ""
         if re.fullmatch(r"[^\d]+", v):
             stats[num_key] = "0"
-    raw_long = stats.get("Long","")
+    raw_long = stats.get("Long") or ""
     nums = re.findall(r"\d+", raw_long)
     if len(nums) >= 2:
         stats["Yards"], stats["Long"] = nums[0], nums[1]
-    if stats.get("TDs","").find("%") != -1 and not stats.get("Comp/Att"):
+    if stats.get("TDs", "").find("%") != -1 and not stats.get("Comp/Att"):
         stats["Comp/Att"], stats["TDs"] = stats["TDs"], stats["Ints"]
     return stats
 
